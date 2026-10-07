@@ -8,22 +8,35 @@ Proyecto de aprendizaje y portafolio: una API para registrar solicitudes de sopo
 
 Un equipo de soporte necesita saber qué solicitudes siguen abiertas y cuánto tarda en resolverlas.
 
-- **Agente de soporte:** registra, consulta y actualiza tickets.
-- **Coordinador:** consulta cantidades y tiempos de resolución.
+- **Solicitante:** registra una solicitud propia y consulta su seguimiento.
+- **Agente de soporte:** atiende las solicitudes que tiene autorizadas y registra su avance.
 
-Estos son roles del producto; la primera versión local no implementa cuentas ni permisos. Trabajaremos con datos ficticios.
+El alcance inicial es el soporte de una sola plataforma para usuarios autenticados. La autenticación y los permisos forman parte del diseño; su implementación todavía está pendiente. Trabajaremos con datos ficticios.
 
 ## Primera versión propuesta
 
 1. Crear tickets con título, descripción y categoría.
 2. Consultarlos por identificador y en una lista paginada.
-3. Cambiar su estado: abierto → en proceso → resuelto.
+3. Registrar estados y un historial básico de atención.
 4. Filtrar por estado, categoría y fecha de creación.
 5. Consultar conteos por estado y tiempo promedio de resolución.
 
-Ejemplo: registrar «No puedo iniciar sesión», iniciar su atención y resolverlo. El resumen debe reflejar el cambio y su duración.
+Ejemplo: registrar «No puedo generar un reporte», iniciar su atención y documentar la solución. El historial debe permitir reconstruir lo ocurrido y el resumen debe reflejar su duración.
 
-Dashboard, autenticación, notificaciones y análisis con Python quedan para versiones posteriores. El MVP inicial se ejecutará localmente con datos ficticios.
+## Reglas y límites
+
+- Cada solicitante conserva su ticket y su seguimiento individual.
+- El acceso depende de la identidad y de los permisos sobre la solicitud.
+- Cerrar un ticket conserva su registro e historial; no equivale a eliminarlo.
+- Un cierre sin respuesta no demuestra que el solicitante haya confirmado la solución.
+- Las transiciones exactas, los permisos por acción y las condiciones de cierre siguen pendientes de definición.
+- La recuperación de cuentas y las solicitudes sin iniciar sesión quedan fuera de la primera versión.
+
+## Ampliaciones previstas
+
+Vincular tickets a incidentes compartidos, analizar fallos recurrentes por servicio y explorar métricas con Power BI. Una solución común deberá conservar el resultado individual de cada solicitud.
+
+Dashboard, notificaciones y automatizaciones se evaluarán después del flujo básico. Estas capacidades todavía no están implementadas.
 
 ## Desarrollo
 
