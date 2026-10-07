@@ -1,0 +1,26 @@
+# Notas personales y acuerdos de mentoría: solo locales
+AGENTS.md
+AGENTS.local.md
+/.notes/
+/notes/
+/notas/
+/docs/PLAN.md
+/docs/BACKLOG.md
+*.private.md
+*.local.md
+
+# Variables de entorno y configuración privada
+.env
+.env.*
+!.env.example
+
+# Dependencias, compilación y pruebas
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Logs y archivos del sistema
+*.log
+.DS_Store
+Thumbs.db
