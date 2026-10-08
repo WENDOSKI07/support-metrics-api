@@ -10,7 +10,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "npm run build && node --test tests/health.test.js"
+    "test": "npm run build && node --test tests"
   },
   "dependencies": {
     "fastify": "^5.12.5"

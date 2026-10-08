@@ -2,7 +2,7 @@
 
 Proyecto de aprendizaje y portafolio: una API para registrar solicitudes de soporte y entender cómo se atienden.
 
-**Estado:** primer servidor implementado. Por ahora solo está disponible `GET /health`; tickets, autenticación y métricas siguen pendientes.
+**Estado:** servidor básico con rutas de salud e información. Tickets, autenticación y métricas siguen pendientes.
 
 ## Problema y usuarios
 
@@ -69,6 +69,16 @@ Abrir `http://127.0.0.1:3000/health`. Responde con código HTTP 200 y:
 ```
 
 Esta ruta pública solo comprueba que la API responde; todavía no comprueba una base de datos. El servidor escucha únicamente en la interfaz local. Para detenerlo, usar Ctrl+C.
+
+### Rutas disponibles
+
+| Método | Ruta | Respuesta |
+| --- | --- | --- |
+| GET | `/health` | Estado `ok` |
+| GET | `/info` | Nombre y versión del proyecto |
+| GET | `/info/health` | Nombre, versión y estado `ok` |
+
+Las tres rutas son públicas y responden con HTTP 200 y JSON. Las rutas de información forman parte del ejercicio inicial; el estado no representa una comprobación de servicios externos.
 
 ### Verificar y compilar
 
