@@ -2,7 +2,7 @@
 
 Proyecto de aprendizaje y portafolio: una API para registrar solicitudes de soporte y entender cómo se atienden.
 
-**Estado:** planificación. Todavía no hay una aplicación ejecutable.
+**Estado:** primer servidor implementado. Por ahora solo está disponible `GET /health`; tickets, autenticación y métricas siguen pendientes.
 
 ## Problema y usuarios
 
@@ -41,3 +41,43 @@ Dashboard, notificaciones y automatizaciones se evaluarán después del flujo b�
 ## Desarrollo
 
 El proyecto se construirá de forma incremental: API básica, persistencia de tickets, seguimiento de estados y métricas de resolución.
+
+### Estructura inicial
+
+```text
+support-metrics-api/
+├── src/         Código de la API
+├── tests/       Pruebas del comportamiento
+├── docs/        Documentación técnica
+├── .gitignore  Exclusiones de Git
+└── README.md   Presentación y alcance
+```
+
+### Ejecutar localmente
+
+Requisitos: Node.js 20.20.0 o superior y npm. La API usa Fastify 5 y TypeScript 5. `tsx` permite reiniciar el servidor al editar TypeScript; las pruebas utilizan el ejecutor integrado de Node.js.
+
+```sh
+npm ci
+npm run dev
+```
+
+Abrir `http://127.0.0.1:3000/health`. Responde con código HTTP 200 y:
+
+```json
+{ "status": "ok" }
+```
+
+Esta ruta pública solo comprueba que la API responde; todavía no comprueba una base de datos. El servidor escucha únicamente en la interfaz local. Para detenerlo, usar Ctrl+C.
+
+### Verificar y compilar
+
+```sh
+npm test
+npm run build
+npm start
+```
+
+`npm test` compila y comprueba el contrato HTTP sin abrir un puerto. `npm run build` genera JavaScript en `dist/`, y `npm start` ejecuta esa compilación. Detener el servidor de desarrollo antes de iniciar el compilado para liberar el puerto 3000.
+
+El archivo `package-lock.json` fija las versiones instaladas. Las dependencias y `dist/` están excluidos de Git.
