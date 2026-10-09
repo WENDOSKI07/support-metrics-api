@@ -13,6 +13,7 @@ export interface CreateTicketInput {
 export type TicketStatus = 'open' | 'in_progress' | 'resolved';
 
 export interface TicketFilters {
+  q?: string;
   status?: TicketStatus;
   category?: TicketCategory;
   createdFrom?: string;

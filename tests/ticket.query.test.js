@@ -3,6 +3,14 @@ import { test } from 'node:test';
 import { validateListQuery } from '../dist/tickets/ticket.query.js';
 import { buildTestApp } from './helpers/app.js';
 
+test('búsqueda normalizada con límites y rechazo de Unicode inválido', () => {
+  assert.equal(validateListQuery({ q: '  reporte  ' }).filters.q, 'reporte');
+  assert.equal(validateListQuery({ q: '🐘'.repeat(120) }).success, true);
+  for (const q of ['', ' ', 'x', 'x'.repeat(121), ['uno', 'dos'], 'texto\0', 'texto\ud800']) {
+    assert.equal(validateListQuery({ q }).success, false);
+  }
+});
+
 test('fechas reales, años bisiestos y rango ascendente', () => {
   assert.equal(validateListQuery({ createdFrom: '2024-02-29' }).success, true);
   assert.equal(validateListQuery({ createdBefore: '2026-11-01' }).success, true);

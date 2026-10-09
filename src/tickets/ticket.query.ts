@@ -1,4 +1,5 @@
 import { ticketCategories, type TicketFilters } from './ticket.types.js';
+import { isStorableText } from './ticket.text.js';
 
 type ListQueryResult =
   | { success: true; page: number; limit: number; filters: TicketFilters }
@@ -13,7 +14,7 @@ function isDate(value: unknown): value is string {
 
 export function validateListQuery(query: Record<string, unknown>): ListQueryResult {
   for (const field of Object.keys(query)) {
-    if (!['page', 'limit', 'status', 'category', 'createdFrom', 'createdBefore'].includes(field)) {
+    if (!['page', 'limit', 'status', 'category', 'createdFrom', 'createdBefore', 'q'].includes(field)) {
       return { success: false, error: { field, message: 'Parámetro no permitido.' } };
     }
   }
@@ -29,6 +30,14 @@ export function validateListQuery(query: Record<string, unknown>): ListQueryResu
   }
   const { page, limit } = values;
   const filters: TicketFilters = {};
+  if (query.q !== undefined) {
+    if (typeof query.q !== 'string') return { success: false, error: { field: 'q', message: 'La búsqueda debe ser texto.' } };
+    const q = query.q.trim();
+    if (!isStorableText(q) || Array.from(q).length < 2 || Array.from(q).length > 120) {
+      return { success: false, error: { field: 'q', message: 'La búsqueda debe tener entre 2 y 120 caracteres válidos.' } };
+    }
+    filters.q = q;
+  }
   for (const field of ['status', 'category'] as const) {
     const value = query[field];
     if (value === undefined) continue;

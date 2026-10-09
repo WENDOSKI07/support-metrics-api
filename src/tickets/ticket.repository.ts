@@ -2,6 +2,9 @@ import { type Pool } from 'pg';
 import { randomUUID } from 'node:crypto';
 import { type CreatedTicket, type Ticket, type StatusChange, type TicketHistory, type TicketFilters, type TicketCounts } from './ticket.types.js';
 import { canTransition } from './ticket.status.js';
+import { type TicketComment } from './ticket.comment.js';
+
+type CommentRow = Omit<TicketComment, 'createdAt'> & { createdAt: Date };
 
 // pg devuelve timestamptz como Date; el contrato HTTP usa texto ISO en UTC.
 type TicketRow = Omit<Ticket, 'createdAt'> & { createdAt: Date };
@@ -19,7 +22,9 @@ function toTicket(row: TicketRow): Ticket {
 }
 
 export interface TicketRepository {
-  counts(filters: Omit<TicketFilters, 'status'>): Promise<TicketCounts>;
+  addComment(ticketId: string, body: string): Promise<TicketComment | undefined>;
+  comments(ticketId: string, limit: number, offset: number): Promise<TicketComment[]>;
+  counts(filters: Omit<TicketFilters, 'status' | 'q'>): Promise<TicketCounts>;
   save(ticket: CreatedTicket): Promise<void>;
   findById(id: string): Promise<Ticket | undefined>;
   list(limit: number, offset: number, filters?: TicketFilters): Promise<Ticket[]>;
@@ -29,6 +34,24 @@ export interface TicketRepository {
 
 export function postgresTicketRepository(pool: Pool): TicketRepository {
   return {
+    async addComment(ticketId, body) {
+      const result = await pool.query<CommentRow>(
+        `INSERT INTO ticket_comments (id, ticket_id, author_id, body)
+         SELECT $1, id, 'local-demo-user', $3 FROM tickets WHERE id = $2
+         RETURNING id, ticket_id AS "ticketId", author_id AS "authorId", body, created_at AS "createdAt"`,
+        [randomUUID(), ticketId, body],
+      );
+      const row = result.rows[0];
+      return row ? { ...row, createdAt: row.createdAt.toISOString() } : undefined;
+    },
+    async comments(ticketId, limit, offset) {
+      const result = await pool.query<CommentRow>(
+        `SELECT id, ticket_id AS "ticketId", author_id AS "authorId", body, created_at AS "createdAt"
+         FROM ticket_comments WHERE ticket_id = $1 ORDER BY created_at, id LIMIT $2 OFFSET $3`,
+        [ticketId, limit, offset],
+      );
+      return result.rows.map(row => ({ ...row, createdAt: row.createdAt.toISOString() }));
+    },
     async counts(filters) {
       // La subconsulta devuelve una sola fecha por ticket para no duplicar conteos.
       const result = await pool.query<{ status: Ticket['status']; count: string; sample: string; average: string | null }>(
@@ -103,16 +126,19 @@ export function postgresTicketRepository(pool: Pool): TicketRepository {
       return result.rows.map(row => ({ ...row, changedAt: row.changedAt.toISOString() }));
     },
     async list(limit, offset, filters = {}) {
+      // ! es el escape SQL elegido; %, _ y ! del usuario se buscan literalmente.
+      const pattern = filters.q === undefined ? null : `%${filters.q.replace(/[!%_]/g, '!$&')}%`;
       const result = await pool.query<TicketRow>(
         `SELECT id, title, description, category, requester_id AS "requesterId",
                 status, created_at AS "createdAt" FROM tickets
          WHERE ($3::text IS NULL OR status = $3) AND ($4::text IS NULL OR category = $4)
            AND ($5::timestamptz IS NULL OR created_at >= $5)
            AND ($6::timestamptz IS NULL OR created_at < $6)
+           AND ($7::text IS NULL OR title ILIKE $7 ESCAPE '!' OR description ILIKE $7 ESCAPE '!')
          ORDER BY created_at DESC, id DESC LIMIT $1 OFFSET $2`,
         [limit, offset, filters.status ?? null, filters.category ?? null,
           filters.createdFrom ? `${filters.createdFrom}T00:00:00.000Z` : null,
-          filters.createdBefore ? `${filters.createdBefore}T00:00:00.000Z` : null],
+          filters.createdBefore ? `${filters.createdBefore}T00:00:00.000Z` : null, pattern],
       );
       return result.rows.map(toTicket);
     },

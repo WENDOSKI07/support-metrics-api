@@ -2,7 +2,7 @@
 
 Proyecto de aprendizaje y portafolio: una API para registrar solicitudes de soporte y entender cómo se atienden.
 
-**Estado:** demo local con creación, consulta, listado paginado y cambios de estado con historial en PostgreSQL mediante Docker. Incluye conteos por estado y promedio de resolución; autenticación sigue pendiente.
+**Estado:** demo local con interfaz web, tickets, comentarios, búsqueda, filtros e historial en PostgreSQL mediante Docker. Incluye conteos por estado y promedio de resolución; autenticación sigue pendiente.
 
 ## Problema y usuarios
 
@@ -36,9 +36,17 @@ Ejemplo: registrar «No puedo generar un reporte», iniciar su atención y docum
 
 Vincular tickets a incidentes compartidos, analizar fallos recurrentes por servicio y explorar métricas con Power BI. Una solución común deberá conservar el resultado individual de cada solicitud.
 
-Dashboard, notificaciones y automatizaciones se evaluarán después del flujo básico. Estas capacidades todavía no están implementadas.
+La interfaz incluye un resumen de métricas. Notificaciones y automatizaciones se evaluarán en etapas posteriores.
 
 ## Desarrollo
+
+### Comprobaciones automáticas
+
+El workflow `.github/workflows/ci.yml` ejecuta las comprobaciones en GitHub Actions al recibir un push o pull request; también permite ejecución manual. Instala las dependencias del lockfile, compila TypeScript y ejecuta las pruebas aisladas y de integración.
+
+Cada ejecución usa PostgreSQL 17 temporal con credenciales exclusivas de prueba. Aplica las migraciones desde cero y las repite para comprobar que no se vuelvan a aplicar. No usa el `.env` local, no despliega la API y solo dispone de permiso de lectura del repositorio. Las acciones están fijadas a commits concretos.
+
+El resultado aparece en la pestaña **Actions** y en los checks del pull request después de publicar el workflow. Para impedir merges cuando falle, hay que configurar aparte una regla de protección de rama que exija `Build and test`.
 
 El proyecto se construirá de forma incremental: API básica, persistencia de tickets, seguimiento de estados y métricas de resolución.
 
@@ -74,7 +82,34 @@ Abrir `http://127.0.0.1:3000/health`. Responde con código HTTP 200 y:
 
 Esta ruta pública solo comprueba que la API responde; todavía no comprueba una base de datos. El servidor escucha únicamente en la interfaz local. Para detenerlo, usar Ctrl+C.
 
-### Rutas disponibles
+### Interfaz, guía y datos de ejemplo
+
+Con el servidor iniciado, abrir:
+
+- [Panel de soporte](http://127.0.0.1:3000/): crear tickets, buscar, filtrar, comentar y registrar su atención y resolución.
+- [Guía de la API](http://127.0.0.1:3000/docs): rutas, ejemplos, respuestas y reglas del flujo.
+
+El panel se adapta a pantallas móviles. Las métricas responden a categoría y fechas; búsqueda y estado filtran solamente la lista de tickets. Las fechas de los filtros se interpretan en UTC.
+
+Para cargar tres tickets ficticios en distintos estados, después de aplicar las migraciones:
+
+```sh
+npm run db:seed
+```
+
+La carga usa identificadores fijos: repetirla no duplica los ejemplos ni sobrescribe sus cambios. Conserva los tickets existentes.
+
+Para ejecutar un recorrido completo desde PowerShell, con la API iniciada:
+
+```powershell
+./docs/demo.ps1
+```
+
+Cada ejecución crea un ticket ficticio, añade un comentario, registra atención y resolución y consulta historial y métricas. Ese ticket se conserva para inspeccionarlo desde el panel.
+
+`public/` contiene HTML, CSS y JavaScript de la interfaz; `src/routes/web.routes.ts` sirve únicamente los archivos permitidos. La interfaz utiliza las mismas rutas de la API y presenta los comentarios como texto plano. No añade dependencias de frontend.
+
+### Rutas de salud e información
 
 | Método | Ruta | Respuesta |
 | --- | --- | --- |
@@ -231,3 +266,21 @@ La misma ruta `/metrics/tickets` añade `resolution`:
 Prueba reproducible: duraciones de 60 y 180 segundos producen promedio 120 y muestra 2. Se verifica también un ticket creado al final de enero y resuelto en febrero, historial adicional, ausencia de fechas y duración negativa. No hay cambios de esquema.
 
 Los textos de creación y motivos rechazan el carácter NUL y secuencias Unicode malformadas con HTTP 400, para evitar errores de almacenamiento o alteraciones al codificar UTF-8. Se conservan emojis y otros caracteres Unicode válidos.
+
+### Conversación del ticket
+
+`POST /tickets/:id/comments` recibe únicamente `{ "body": "El error aparece al descargar el reporte." }` y devuelve 201 con el comentario guardado. Admite de 1 a 5000 puntos de código Unicode después de quitar espacios exteriores; rechaza texto vacío, NUL, Unicode malformado y campos extra. El servidor asigna UUID, fecha UTC y autor fijo `local-demo-user`, que no representa una identidad autenticada.
+
+`GET /tickets/:id/comments?page=1&limit=20` devuelve `data` y `pagination` con `page`, `limit` y `hasNext`. Usa los mismos límites de paginación del listado de tickets y ordena del más antiguo al más reciente, con UUID como desempate. Un ticket sin mensajes devuelve una lista vacía; un ticket inexistente devuelve 404. Solo permite parámetros page y limit.
+
+Los comentarios son texto plano; la interfaz los representa como texto sin ejecutar HTML recibido. No cambian el estado, no sustituyen el motivo obligatorio al resolver y no modifican las métricas. También se aceptan en tickets resueltos: esta versión no tiene cierre definitivo. No hay adjuntos, edición, borrado ni distinción entre notas privadas y mensajes públicos.
+
+Aplicar `npm run db:migrate` para crear la tabla con la migración 004. Las pruebas verifican persistencia, paginación, separación por ticket, campos del servidor y comentarios después de resolver. La demo sigue siendo local sin permisos por usuario.
+
+### Buscar tickets por texto
+
+`GET /tickets?q=reporte&status=open` busca una subcadena en título o descripción sin distinguir mayúsculas. Se combina con categoría, fechas y paginación. El texto debe tener de 2 a 120 puntos de código Unicode después de quitar espacios exteriores. Parámetros repetidos y texto inválido devuelven 400.
+
+Los caracteres `%`, `_` y `!` se buscan literalmente; no actúan como comodines. No busca en comentarios ni ofrece relevancia, corrección ortográfica o equivalencia entre letras acentuadas y no acentuadas. Conserva el orden por fecha del listado. La ruta de métricas no admite `q`.
+
+La consulta usa SQL parametrizado. La búsqueda por subcadena puede recorrer la tabla; si el volumen crece, se medirá su rendimiento antes de añadir índices especializados. No requiere migraciones nuevas.

@@ -1,0 +1,62 @@
+name: API checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: support_ci
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: support_metrics_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U support_ci -d support_metrics_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: support_ci
+      PGPASSWORD: ci-only-password
+      PGDATABASE: support_metrics_test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '20.20.0'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Compile and run isolated tests
+        run: npm test
+      - name: Prepare test environment
+        # Los valores proceden del entorno del job; no usamos credenciales personales.
+        run: touch .env
+      - name: Apply migrations
+        run: npm run db:migrate
+      - name: Check migrations can run again
+        run: npm run db:migrate
+      - name: Run PostgreSQL integration tests
+        run: node --env-file=.env --test integration
