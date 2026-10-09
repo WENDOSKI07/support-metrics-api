@@ -4,6 +4,18 @@ const categories = { functionality: 'Funcionamiento', data: 'Datos', usage: 'Uso
 const date = value => new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 let page = 1, selected = null, current = null, commentPage = 1, listVersion = 0, detailVersion = 0;
 let applied = new URLSearchParams();
+const drafts = new Map();
+const shortDate = value => new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value));
+
+function emptyRow(message) {
+  const row = element('tr');
+  const cell = element('td', message, 'empty'); cell.colSpan = 4;
+  row.append(cell); return row;
+}
+
+function saveDraft() {
+  if (current) drafts.set(current.id, { reason: $('reason').value, body: $('comment-body').value });
+}
 
 function notice(message, error = false) {
   $('notice').textContent = message;
@@ -38,22 +50,27 @@ async function loadList() {
     const result = await api(`/tickets?${params}`);
     if (version !== listVersion) return;
     $('tickets').replaceChildren();
-    if (!result.data.length) $('tickets').append(element('p', 'No hay tickets para esta consulta. Crea una solicitud o cambia los filtros.', 'empty'));
+    if (!result.data.length) $('tickets').append(emptyRow('No hay tickets para esta consulta. Crea una solicitud o cambia los filtros.'));
     for (const ticket of result.data) {
       const button = element('button', undefined, 'ticket-row');
       button.type = 'button'; button.dataset.id = ticket.id;
       button.setAttribute('aria-pressed', String(ticket.id === selected));
-      const head = element('span', undefined, 'row-head');
-      head.append(element('span', statuses[ticket.status], `badge ${ticket.status}`), element('small', categories[ticket.category]));
-      button.append(head, element('strong', ticket.title), element('p', ticket.description));
+      const row = element('tr', undefined, ticket.id === selected ? 'selected' : undefined);
+      const subject = element('td');
+      button.append(element('span', `TK-${ticket.id.slice(0, 4)}…${ticket.id.slice(-4)}`, 'ticket-id'), element('span', ticket.title));
+      subject.append(button, element('span', ticket.description, 'row-description'));
+      const status = element('td'); status.append(element('span', statuses[ticket.status], `badge ${ticket.status}`));
+      const created = element('td'); const time = element('time', shortDate(ticket.createdAt));
+      time.dateTime = ticket.createdAt; time.title = date(ticket.createdAt); created.append(time);
+      row.append(subject, status, element('td', categories[ticket.category]), created);
       button.addEventListener('click', () => selectTicket(ticket.id));
-      $('tickets').append(button);
+      $('tickets').append(row);
     }
     $('page').textContent = `Página ${page}`;
     $('previous').disabled = page <= 1; $('next').disabled = !result.pagination.hasNext;
   } catch (error) {
     if (version === listVersion) {
-      $('tickets').replaceChildren(element('p', 'No se pudo cargar la bandeja. Pulsa Actualizar para reintentar.', 'empty'));
+      $('tickets').replaceChildren(emptyRow('No se pudo cargar la bandeja. Pulsa Actualizar para reintentar.'));
       notice(error.message, true);
     }
   }
@@ -90,11 +107,17 @@ function renderComments(comments) {
 }
 
 async function selectTicket(id, focus = true) {
+  saveDraft();
   selected = id; current = null;
+  document.querySelector('.detail').hidden = false;
+  $('workspace').classList.add('has-detail');
   const version = ++detailVersion;
   $('ticket-detail').hidden = true; $('placeholder').hidden = false;
   $('placeholder').replaceChildren(element('p', 'Cargando conversación…'));
-  for (const row of document.querySelectorAll('.ticket-row')) row.setAttribute('aria-pressed', String(row.dataset.id === id));
+  for (const row of document.querySelectorAll('.ticket-row')) {
+    row.setAttribute('aria-pressed', String(row.dataset.id === id));
+    row.closest('tr').classList.toggle('selected', row.dataset.id === id);
+  }
   try {
     const [ticket, history, comments] = await Promise.all([api(`/tickets/${id}`), api(`/tickets/${id}/history`), api(`/tickets/${id}/comments?limit=20`)]);
     if (version !== detailVersion) return;
@@ -106,7 +129,8 @@ async function selectTicket(id, focus = true) {
     $('transition').hidden = ticket.status === 'resolved'; $('resolved-note').hidden = ticket.status !== 'resolved';
     $('transition-button').textContent = ticket.status === 'open' ? 'Iniciar atención' : 'Registrar solución';
     $('reason-label').textContent = ticket.status === 'open' ? 'Motivo para iniciar la atención' : 'Qué se hizo para solucionar el problema';
-    $('reason').value = ''; $('comment-body').value = '';
+    const draft = drafts.get(id);
+    $('reason').value = draft?.reason || ''; $('comment-body').value = draft?.body || '';
     $('history').replaceChildren(...history.data.map(event => element('li', `${statuses[event.previousStatus]} → ${statuses[event.status]} · ${date(event.changedAt)}\n${event.reason}`)));
     $('comments').replaceChildren();
     if (!comments.data.length) $('comments').append(element('p', 'Todavía no hay mensajes. Puedes iniciar la conversación.', 'muted'));
@@ -120,6 +144,18 @@ async function selectTicket(id, focus = true) {
     }
   }
 }
+
+$('close-detail').addEventListener('click', () => {
+  saveDraft();
+  const previousId = selected; selected = null; current = null; detailVersion++;
+  document.querySelector('.detail').hidden = true;
+  $('workspace').classList.remove('has-detail');
+  for (const row of document.querySelectorAll('.ticket-row')) {
+    row.setAttribute('aria-pressed', 'false'); row.closest('tr').classList.remove('selected');
+  }
+  const opener = [...document.querySelectorAll('.ticket-row')].find(row => row.dataset.id === previousId);
+  (opener || $('workspace')).focus();
+});
 
 $('filters').addEventListener('submit', event => {
   event.preventDefault(); applied = new URLSearchParams();
@@ -148,7 +184,7 @@ $('transition').addEventListener('submit', async event => {
   const reason = $('reason').value;
   try {
     await api(`/tickets/${ticket.id}/status`, 'PATCH', { expectedStatus: ticket.status, status: ticket.status === 'open' ? 'in_progress' : 'resolved', reason });
-    if (selected === ticket.id) await selectTicket(ticket.id, false);
+    if (selected === ticket.id) { $('reason').value = ''; await selectTicket(ticket.id, false); }
     await refresh(); notice('Cambio de estado guardado en el historial.');
   } catch (error) {
     if (error.status === 409 && selected === ticket.id) { await selectTicket(ticket.id, false); $('reason').value = reason; }
@@ -160,7 +196,7 @@ $('comment-form').addEventListener('submit', async event => {
   const id = current.id, button = event.target.querySelector('[type=submit]'); button.disabled = true;
   try {
     await api(`/tickets/${id}/comments`, 'POST', { body: $('comment-body').value });
-    if (selected === id) await selectTicket(id, false);
+    if (selected === id) { $('comment-body').value = ''; await selectTicket(id, false); }
     notice('Comentario guardado. Si hay más de 20 mensajes, usa Cargar más mensajes para ver los siguientes.');
   } catch (error) { notice(error.message, true); }
   finally { button.disabled = false; }
@@ -175,3 +211,15 @@ $('more-comments').addEventListener('click', async () => {
   finally { $('more-comments').disabled = false; }
 });
 refresh();
+
+function updateNavigation() {
+  const target = location.hash === '#overview' ? '#overview' : '#workspace';
+  for (const link of document.querySelectorAll('.sidebar a[href^="#"]')) {
+    const active = link.getAttribute('href') === target;
+    link.classList.toggle('active', active);
+    if (active) link.setAttribute('aria-current', 'location');
+    else link.removeAttribute('aria-current');
+  }
+}
+window.addEventListener('hashchange', updateNavigation);
+updateNavigation();

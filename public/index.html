@@ -1,17 +1,29 @@
 <!doctype html>
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Support Metrics · Mesa de soporte</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
-<body>
+<body class="dashboard">
 <a class="skip" href="#workspace">Ir a los tickets</a>
-<header><a class="brand" href="/">Support<span>Metrics</span></a><nav aria-label="Principal"><a href="/docs">Guía de la API</a><span class="demo">Demo local · sin login</span></nav></header>
-<main>
-  <section class="intro"><div><p class="eyebrow">Mesa de soporte</p><h1>Cada solicitud,<br>con seguimiento.</h1><p>Organiza la atención y conserva la conversación en un solo lugar.</p></div><button id="new-ticket" class="primary">+ Crear ticket</button></section>
+<aside class="sidebar" aria-label="Espacio de trabajo">
+  <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">S</span>Support Metrics</a>
+  <p class="workspace-label">Espacio de soporte</p>
+  <nav aria-label="Principal">
+    <a class="nav-item active" href="#workspace" aria-current="page"><span aria-hidden="true">▤</span> Tickets</a>
+    <a class="nav-item" href="#overview"><span aria-hidden="true">◷</span> Resumen de atención</a>
+    <a class="nav-item" href="/docs"><span aria-hidden="true">≡</span> Guía de la API</a>
+  </nav>
+  <div class="sidebar-footer"><span class="demo-dot" aria-hidden="true"></span><div>Espacio de demostración<small>Datos ficticios · Sin login</small></div></div>
+</aside>
+<main class="main-content">
+  <header class="topbar"><span>Mesa de soporte <span class="breadcrumb" aria-hidden="true">/</span> <strong>Tickets</strong></span><span class="local-label">Demo local</span></header>
+  <section class="intro"><div><h1>Tickets</h1><p>Organiza las solicitudes y da seguimiento a cada solución.</p></div><button id="new-ticket" class="primary"><span aria-hidden="true">＋</span> Crear ticket</button></section>
+  <div id="overview" tabindex="-1">
   <section class="metrics" aria-label="Resumen de atención"><div><span>Total</span><strong id="total">—</strong></div><div><span>Abiertos</span><strong id="open">—</strong></div><div><span>En atención</span><strong id="in-progress">—</strong></div><div><span>Resueltos</span><strong id="resolved">—</strong></div><div class="duration"><span>Promedio de resolución</span><strong id="average">—</strong><small id="sample">Sin datos</small></div></section>
   <p class="metric-note">Resumen por categoría y fecha de creación. La búsqueda y el filtro de estado solo afectan la bandeja. Fechas en UTC.</p>
+  </div>
   <p id="notice" role="status" aria-live="polite"></p>
-  <section id="workspace" class="workspace">
+  <section id="workspace" class="workspace" tabindex="-1">
     <div class="inbox">
-      <div class="section-heading"><h2>Bandeja de tickets</h2><button id="refresh" class="quiet">Actualizar</button></div>
+      <div class="section-heading"><h2>Todos los tickets</h2><button id="refresh" class="quiet">Actualizar</button></div>
       <form id="filters" class="filters">
         <label class="search">Buscar<input name="q" placeholder="Título o descripción" minlength="2" maxlength="120" type="search"></label>
         <label>Estado<select name="status"><option value="">Todos</option><option value="open">Abiertos</option><option value="in_progress">En atención</option><option value="resolved">Resueltos</option></select></label>
@@ -19,10 +31,10 @@
         <label>Desde (incluido)<input type="date" name="createdFrom"></label><label>Antes de (excluido)<input type="date" name="createdBefore"></label>
         <div class="filter-actions"><button type="submit">Aplicar filtros</button><button type="button" id="clear" class="quiet">Limpiar</button></div>
       </form>
-      <div id="tickets" aria-live="polite"><p class="empty">Cargando solicitudes…</p></div>
-      <div class="pager"><button id="previous" class="quiet">Anterior</button><span id="page">Página 1</span><button id="next" class="quiet">Siguiente</button></div>
+      <div class="ticket-table-wrap"><table class="ticket-table"><caption class="sr-only">Tickets de la consulta actual</caption><thead><tr><th scope="col">Solicitud</th><th scope="col">Estado</th><th scope="col">Categoría</th><th scope="col">Creado</th></tr></thead><tbody id="tickets"><tr><td colspan="4" class="empty">Cargando solicitudes…</td></tr></tbody></table></div>
+      <div class="pager"><button id="previous" class="quiet">Anterior</button><span id="page" role="status" aria-live="polite">Página 1</span><button id="next" class="quiet">Siguiente</button></div>
     </div>
-    <aside class="detail" aria-label="Detalle del ticket"><div id="placeholder" class="empty detail-placeholder"><span class="placeholder-icon" aria-hidden="true">↗</span><h2>Abre una conversación</h2><p>Selecciona un ticket para revisar el problema, registrar avances o responder.</p></div>
+    <aside class="detail" aria-label="Detalle del ticket" hidden><div class="section-heading detail-top"><span>Detalle de la solicitud</span><button id="close-detail" class="quiet" aria-label="Cerrar detalle">Cerrar <span aria-hidden="true">×</span></button></div><div id="placeholder" class="empty detail-placeholder"><span class="placeholder-icon" aria-hidden="true">↗</span><h2>Abre una conversación</h2><p>Selecciona un ticket para revisar el problema, registrar avances o responder.</p></div>
       <article id="ticket-detail" hidden>
         <div class="section-heading"><span id="detail-status" class="badge"></span><small id="detail-category"></small></div>
         <h2 id="detail-title" tabindex="-1"></h2><p id="detail-date" class="muted"></p><p id="detail-description" class="prose"></p><details class="identifier"><summary>Identificador del ticket</summary><code id="detail-id"></code></details>
@@ -35,5 +47,5 @@
   </section>
   <footer>Support Metrics API <span>Proyecto de aprendizaje · Datos ficticios</span></footer>
 </main>
-<dialog id="create-dialog"><form id="create-form"><div class="section-heading"><h2>Crear ticket</h2><button type="button" id="close-dialog" class="quiet" aria-label="Cerrar formulario">Cerrar</button></div><p class="muted">Describe el problema para empezar su seguimiento.</p><label>Título<input name="title" required minlength="5" placeholder="Por ejemplo: no puedo descargar un reporte"></label><label>Categoría<select name="category"><option value="functionality">Funcionamiento</option><option value="data">Datos</option><option value="usage">Uso de la plataforma</option></select></label><label>Descripción<textarea name="description" required minlength="10" rows="5" placeholder="Qué intentabas hacer y qué ocurrió"></textarea></label><p id="create-error" role="alert"></p><button type="submit" class="primary">Registrar ticket</button></form></dialog>
+<dialog id="create-dialog" aria-labelledby="create-title" aria-describedby="create-help"><form id="create-form"><div class="section-heading"><h2 id="create-title">Crear ticket</h2><button type="button" id="close-dialog" class="quiet" aria-label="Cerrar formulario">Cerrar</button></div><p id="create-help" class="muted">Describe qué ocurrió y qué esperabas que pasara.</p><label>Título<input name="title" required minlength="5" autocomplete="off" placeholder="Por ejemplo: no puedo descargar un reporte"></label><label>Categoría<select name="category"><option value="functionality">Funcionamiento</option><option value="data">Datos</option><option value="usage">Uso de la plataforma</option></select></label><label>Descripción<textarea name="description" required minlength="10" rows="5" placeholder="Qué intentabas hacer y qué ocurrió"></textarea></label><p id="create-error" role="alert"></p><button type="submit" class="primary">Registrar ticket</button></form></dialog>
 </body></html>
