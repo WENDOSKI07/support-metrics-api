@@ -1,11 +1,19 @@
 import { buildApp } from './app.js';
+import pg from 'pg';
+import { postgresTicketRepository } from './tickets/ticket.repository.js';
 
-const app = buildApp({ logger: true });
+const pool = new pg.Pool({ connectionTimeoutMillis: 5000, max: 10 });
+const app = buildApp(postgresTicketRepository(pool), { logger: true });
+pool.on('error', error => app.log.error(error, 'Error en una conexión inactiva de PostgreSQL'));
+app.addHook('onClose', async () => { await pool.end(); });
 
 try {
+  // Comprueba también que se aplicaron las migraciones antes de atender peticiones.
+  await pool.query('SELECT id FROM tickets LIMIT 0');
   await app.listen({ port: 3000, host: '127.0.0.1' });
 } catch (error) {
   app.log.error(error);
+  await app.close();
   process.exitCode = 1;
 }
 

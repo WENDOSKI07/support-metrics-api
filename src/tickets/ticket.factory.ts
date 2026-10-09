@@ -6,7 +6,7 @@ type BuildTicketResult =
   | { success: true; ticket: CreatedTicket }
   | { success: false; error: { field: string; message: string } };
 
-/** Construye un ticket sin guardarlo. requesterId debe proceder de autenticación. */
+/** Construye un ticket sin guardarlo. El llamador controla requesterId; la demo usa uno fijo. */
 export function buildTicket(input: unknown, requesterId: string): BuildTicketResult {
   // Comprueba el contrato interno; no verifica sesiones ni la existencia del usuario.
   if (typeof requesterId !== 'string' || requesterId.trim().length === 0) {

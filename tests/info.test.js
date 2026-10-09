@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildApp } from '../dist/app.js';
+import { buildTestApp as buildApp } from './helpers/app.js';
 
 test('GET /info devuelve el nombre y la versión del proyecto', async (t) => {
   const app = buildApp();

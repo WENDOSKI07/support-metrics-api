@@ -6,4 +6,6 @@ Esta carpeta contiene pruebas del comportamiento de la API con `node:test` y las
 
 `info.test.js` verifica las respuestas de `/info` y `/info/health`. `npm test` descubre los archivos de pruebas de esta carpeta automáticamente.
 
-Al desarrollar tickets, comprobaremos casos como entradas inválidas, acceso a solicitudes ajenas y transiciones de estado no permitidas. Cada prueba se añadirá junto con la funcionalidad correspondiente y usará datos ficticios.
+Las pruebas de tickets cubren validación, campos controlados por el servidor, creación, consulta y errores de almacenamiento sin detalles internos. `helpers/app.js` proporciona memoria únicamente para las pruebas aisladas.
+
+`npm run test:db` ejecuta `integration/tickets.test.js` contra PostgreSQL local. Requiere `.env`, `npm run db:up` y `npm run db:migrate`. Comprueba persistencia al reconstruir la aplicación y las conexiones, texto tratado como datos y restricciones de categoría, estado e identificador. Limpia solo su propio ticket ficticio. No implementamos todavía permisos ni transiciones de estado.

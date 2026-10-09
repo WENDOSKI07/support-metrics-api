@@ -7,16 +7,22 @@
     "node": ">=20.20.0"
   },
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch --env-file=.env src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
-    "test": "npm run build && node --test tests"
+    "start": "node --env-file=.env dist/server.js",
+    "test": "npm run build && node --test tests",
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down",
+    "db:migrate": "node --env-file=.env scripts/migrate.mjs",
+    "test:db": "npm run build && node --env-file=.env --test integration"
   },
   "dependencies": {
-    "fastify": "^5.12.5"
+    "fastify": "^5.12.5",
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "@types/node": "^20.19.43",
+    "@types/pg": "^8.23.1",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3"
   }

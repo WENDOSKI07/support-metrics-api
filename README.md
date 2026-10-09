@@ -2,7 +2,7 @@
 
 Proyecto de aprendizaje y portafolio: una API para registrar solicitudes de soporte y entender cómo se atienden.
 
-**Estado:** servidor básico con rutas de salud e información. Tickets, autenticación y métricas siguen pendientes.
+**Estado:** demo local con creación y consulta individual de tickets en PostgreSQL mediante Docker. Autenticación, historial y métricas siguen pendientes.
 
 ## Problema y usuarios
 
@@ -11,7 +11,7 @@ Un equipo de soporte necesita saber qué solicitudes siguen abiertas y cuánto t
 - **Solicitante:** registra una solicitud propia y consulta su seguimiento.
 - **Agente de soporte:** atiende las solicitudes que tiene autorizadas y registra su avance.
 
-El alcance inicial es el soporte de una sola plataforma para usuarios autenticados. La autenticación y los permisos forman parte del diseño; su implementación todavía está pendiente. Trabajaremos con datos ficticios.
+El objetivo es el soporte de una sola plataforma. Por ahora se aplaza el login para practicar el flujo de tickets localmente con datos ficticios. Todas las solicitudes usan el identificador fijo `local-demo-user`: no representa un usuario autenticado. La demo no tiene control de acceso y no está preparada para publicarse como servicio multiusuario.
 
 ## Primera versión propuesta
 
@@ -26,11 +26,11 @@ Ejemplo: registrar «No puedo generar un reporte», iniciar su atención y docum
 ## Reglas y límites
 
 - Cada solicitante conserva su ticket y su seguimiento individual.
-- El acceso depende de la identidad y de los permisos sobre la solicitud.
+- El acceso por identidad y permisos se implementará en una etapa posterior; aún no está protegido.
 - Cerrar un ticket conserva su registro e historial; no equivale a eliminarlo.
 - Un cierre sin respuesta no demuestra que el solicitante haya confirmado la solución.
 - Las transiciones exactas, los permisos por acción y las condiciones de cierre siguen pendientes de definición.
-- La recuperación de cuentas y las solicitudes sin iniciar sesión quedan fuera de la primera versión.
+- La demo local admite peticiones sin iniciar sesión. La recuperación de cuentas queda fuera del alcance.
 
 ## Ampliaciones previstas
 
@@ -55,10 +55,14 @@ support-metrics-api/
 
 ### Ejecutar localmente
 
-Requisitos: Node.js 20.20.0 o superior y npm. La API usa Fastify 5 y TypeScript 5. `tsx` permite reiniciar el servidor al editar TypeScript; las pruebas utilizan el ejecutor integrado de Node.js.
+Requisitos: Node.js 20.20.0 o superior, npm y Docker Desktop iniciado con contenedores Linux. La API usa Fastify 5 y TypeScript 5. `tsx` reinicia el servidor al editar TypeScript.
+
+En la primera instalación, copiar `.env.example` a `.env` y sustituir `PGPASSWORD` por una contraseña local propia. Si ya existe `.env`, conservarlo. Git ignora ese archivo.
 
 ```sh
 npm ci
+npm run db:up
+npm run db:migrate
 npm run dev
 ```
 
@@ -80,14 +84,67 @@ Esta ruta pública solo comprueba que la API responde; todavía no comprueba una
 
 Las tres rutas son públicas y responden con HTTP 200 y JSON. Las rutas de información forman parte del ejercicio inicial; el estado no representa una comprobación de servicios externos.
 
+### Probar tickets desde PowerShell
+
+Con `npm run dev` activo, ejecutar en otra terminal:
+
+```powershell
+$body = @{
+  title = 'No puedo generar un reporte'
+  description = 'Al pulsar Generar aparece un error y no se descarga.'
+  category = 'functionality'
+} | ConvertTo-Json
+
+$ticket = Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:3000/tickets' -ContentType 'application/json' -Body $body
+$ticket
+Invoke-RestMethod -Uri "http://127.0.0.1:3000/tickets/$($ticket.id)"
+```
+
+`POST /tickets` devuelve 201 y la cabecera `Location` con la dirección del ticket. Una entrada inválida devuelve 400. `GET /tickets/:id` devuelve 200 si existe o 404 si no existe.
+
+### Listar tickets
+
+`GET /tickets?page=1&limit=20` devuelve `{ data: [...], pagination: { page: 1, limit: 20, hasNext: false } }`.
+
+- `page`: entero entre 1 y 10000, por defecto 1.
+- `limit`: entero entre 1 y 100, por defecto 20.
+- Orden: fecha de creación descendente, con UUID descendente como desempate.
+- Una página sin resultados devuelve 200 y `data: []`. `hasNext` indica si quedan resultados.
+- Parámetros desconocidos, repetidos o inválidos devuelven 400.
+
+La paginación usa desplazamiento (`OFFSET`); altas nuevas pueden mover los resultados entre páginas. No ofrece una instantánea de todo el recorrido. Si aumenta el volumen o se necesita recorrer datos mientras llegan nuevos tickets, se evaluará paginación por cursor. Esta ruta sigue siendo parte de la demo local sin control de acceso.
+
+La migración `002_ticket_listing_index.sql` añade un índice acorde con el orden de consulta. Ejecutar `npm run db:migrate` al actualizar el proyecto.
+
+Los tickets se conservan al reiniciar la API. PostgreSQL escucha en `127.0.0.1:15432` y la API en `127.0.0.1:3000`. La API comprueba al arrancar que puede consultar la tabla; si falta la base de datos o la migración, no inicia la escucha.
+
+### Base de datos
+
+- `compose.yaml` inicia PostgreSQL 17 y guarda sus datos en un volumen de Docker.
+- `migrations/001_create_tickets.sql` crea la tabla con UUID único, campos obligatorios y categorías válidas. Por ahora solo admite el estado `open`.
+- `npm run db:migrate` aplica las migraciones pendientes en una transacción y registra cuáles se ejecutaron. Puede repetirse sin duplicar la tabla. Las migraciones aplicadas se conservan; los cambios futuros van en otro archivo SQL.
+- `npm run db:down` detiene y retira el contenedor conservando el volumen. `npm run db:up` vuelve a iniciarlo con los datos existentes. `docker compose down -v` eliminaría el volumen y sus datos.
+- Cambiar `PGPASSWORD` en `.env` no cambia la contraseña de una base ya inicializada. La configuración inicial se usa cuando el volumen está vacío.
+
+El usuario de base de datos es el administrador local creado por la imagen de PostgreSQL para este ejercicio. Antes de un despliegue se separarán los permisos de migración y los de la aplicación.
+
+Para consultar registros desde PowerShell:
+
+```powershell
+docker compose exec postgres psql -U support_app -d support_metrics -c "SELECT id, title, category, status, created_at FROM tickets ORDER BY created_at DESC LIMIT 10;"
+```
+
 ### Verificar y compilar
 
 ```sh
 npm test
+npm run test:db
 npm run build
 npm start
 ```
 
-`npm test` compila y comprueba el contrato HTTP sin abrir un puerto. `npm run build` genera JavaScript en `dist/`, y `npm start` ejecuta esa compilación. Detener el servidor de desarrollo antes de iniciar el compilado para liberar el puerto 3000.
+`npm test` comprueba validaciones y contrato HTTP con almacenamiento de prueba en memoria. `npm run test:db` requiere PostgreSQL iniciado y migrado: crea un ticket ficticio, cierra y reconstruye la aplicación y sus conexiones, recupera el ticket y comprueba restricciones SQL. Al terminar elimina únicamente ese registro de prueba.
+
+`npm run build` genera JavaScript en `dist/`, y `npm start` ejecuta esa compilación. Detener el servidor de desarrollo antes de iniciar el compilado para liberar el puerto 3000.
 
 El archivo `package-lock.json` fija las versiones instaladas. Las dependencias y `dist/` están excluidos de Git.

@@ -1,6 +1,6 @@
 # Datos iniciales de tickets
 
-Este módulo contiene los tipos de creación, la validación y la construcción de un ticket en memoria. Todavía no hay rutas de tickets, almacenamiento ni autenticación implementados.
+Este módulo contiene los tipos, la validación, la construcción y el almacenamiento de tickets. La demo ofrece `POST /tickets` y `GET /tickets/:id` con PostgreSQL. No hay autenticación.
 
 ## Construcción del ticket
 
@@ -11,9 +11,9 @@ Este módulo contiene los tipos de creación, la validación y la construcción 
 3. Si son válidos, genera un UUID, asigna `open` y registra la fecha actual en UTC.
 4. Devuelve `{ success: true, ticket }`; una entrada inválida devuelve `{ success: false, error }` sin ticket.
 
-El segundo argumento deberá provenir de la identidad verificada por el servidor, no del JSON ni de una cabecera libre enviada por el usuario. Comprobar que es texto no autentica a nadie. Una llamada interna sin ese identificador lanza `TypeError` para señalar un error de integración.
+En la demo local, el segundo argumento es el valor fijo local-demo-user establecido por la ruta. Cuando se implemente autenticación, deberá provenir de una identidad verificada, no del formulario. Comprobar que es texto no autentica a nadie. Una llamada interna sin ese identificador lanza `TypeError` para señalar un error de integración.
 
-La función solo construye un objeto: no lo guarda, no registra historial y no detecta reintentos. Dos llamadas válidas generan identificadores diferentes. Persistencia, historial inicial e idempotencia se abordarán al diseñar la operación completa de creación.
+La función solo construye un objeto. La ruta espera a que el repositorio lo guarde antes de responder 201. Dos llamadas válidas generan identificadores diferentes; historial e idempotencia siguen pendientes.
 
 ## Entrada y resultado
 
@@ -24,7 +24,7 @@ La función solo construye un objeto: no lo guarda, no registra historial y no d
 | Campo | Origen previsto |
 | --- | --- |
 | `id` | Identificador generado al crear el ticket |
-| `requesterId` | Identidad autenticada, nunca un usuario elegido libremente en el formulario |
+| `requesterId` | Valor fijo `local-demo-user` en esta demo; autenticación pendiente |
 | `status` | Estado inicial `open` |
 | `createdAt` | Fecha del servidor, representada como texto ISO 8601 en UTC |
 
@@ -49,8 +49,8 @@ Reglas iniciales de implementación, ajustables al revisar el formulario:
 | `data` | Información incorrecta o inconsistente |
 | `usage` | Consulta sobre cómo usar la plataforma |
 
-Ejecutar `npm test` para comprobar los casos válidos, los límites y los rechazos. La futura ruta HTTP deberá invocar esta validación y comprobar la autenticación; esta función por sí sola no expone una API ni devuelve códigos HTTP.
+Ejecutar `npm test` para comprobar los casos válidos, los límites y los rechazos. La ruta invoca esta validación; el formulario no puede establecer identificador, solicitante, estado o fecha.
 
 ## Qué comprueban los tipos
 
-Una interfaz TypeScript ayuda a comprobar el código durante la compilación. No crea tablas, no guarda datos y no valida por sí sola un JSON recibido por HTTP. La validación de entradas y los permisos deberán implementarse antes de exponer una ruta de creación.
+Una interfaz TypeScript comprueba el código durante la compilación. Las tablas se crean mediante migraciones SQL, la validación examina el JSON en ejecución y el repositorio persiste el resultado. Los permisos siguen pendientes: esta demo es exclusivamente local.
