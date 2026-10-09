@@ -13,7 +13,7 @@ Este módulo contiene los tipos, la validación, la construcción y el almacenam
 
 En la demo local, el segundo argumento es el valor fijo local-demo-user establecido por la ruta. Cuando se implemente autenticación, deberá provenir de una identidad verificada, no del formulario. Comprobar que es texto no autentica a nadie. Una llamada interna sin ese identificador lanza `TypeError` para señalar un error de integración.
 
-La función solo construye un objeto. La ruta espera a que el repositorio lo guarde antes de responder 201. Dos llamadas válidas generan identificadores diferentes; historial e idempotencia siguen pendientes.
+La función solo construye un objeto. La ruta espera a que el repositorio lo guarde antes de responder 201. Dos llamadas válidas generan identificadores diferentes; idempotencia sigue pendiente. Los cambios posteriores de estado generan historial.
 
 ## Entrada y resultado
 
@@ -28,7 +28,7 @@ La función solo construye un objeto. La ruta espera a que el repositorio lo gua
 | `status` | Estado inicial `open` |
 | `createdAt` | Fecha del servidor, representada como texto ISO 8601 en UTC |
 
-`CreatedTicket` describe únicamente el resultado inicial. Los estados posteriores y sus transiciones siguen pendientes de diseño.
+`CreatedTicket` describe el resultado inicial abierto. `Ticket` representa también `in_progress` y `resolved`. `ticket.status.ts` valida la petición y define las transiciones permitidas.
 
 ## Validación inicial
 

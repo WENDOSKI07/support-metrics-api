@@ -2,7 +2,7 @@
 
 Proyecto de aprendizaje y portafolio: una API para registrar solicitudes de soporte y entender cómo se atienden.
 
-**Estado:** demo local con creación y consulta individual de tickets en PostgreSQL mediante Docker. Autenticación, historial y métricas siguen pendientes.
+**Estado:** demo local con creación, consulta, listado paginado y cambios de estado con historial en PostgreSQL mediante Docker. Autenticación y métricas siguen pendientes.
 
 ## Problema y usuarios
 
@@ -29,7 +29,7 @@ Ejemplo: registrar «No puedo generar un reporte», iniciar su atención y docum
 - El acceso por identidad y permisos se implementará en una etapa posterior; aún no está protegido.
 - Cerrar un ticket conserva su registro e historial; no equivale a eliminarlo.
 - Un cierre sin respuesta no demuestra que el solicitante haya confirmado la solución.
-- Las transiciones exactas, los permisos por acción y las condiciones de cierre siguen pendientes de definición.
+- Se permite `open → in_progress → resolved`. Permisos por acción, confirmación del solicitante y cierre siguen pendientes de definición.
 - La demo local admite peticiones sin iniciar sesión. La recuperación de cuentas queda fuera del alcance.
 
 ## Ampliaciones previstas
@@ -121,7 +121,7 @@ Los tickets se conservan al reiniciar la API. PostgreSQL escucha en `127.0.0.1:1
 ### Base de datos
 
 - `compose.yaml` inicia PostgreSQL 17 y guarda sus datos en un volumen de Docker.
-- `migrations/001_create_tickets.sql` crea la tabla con UUID único, campos obligatorios y categorías válidas. Por ahora solo admite el estado `open`.
+- `migrations/001_create_tickets.sql` crea la tabla con UUID único, campos obligatorios y categorías válidas. La migración 003 añade estados e historial.
 - `npm run db:migrate` aplica las migraciones pendientes en una transacción y registra cuáles se ejecutaron. Puede repetirse sin duplicar la tabla. Las migraciones aplicadas se conservan; los cambios futuros van en otro archivo SQL.
 - `npm run db:down` detiene y retira el contenedor conservando el volumen. `npm run db:up` vuelve a iniciarlo con los datos existentes. `docker compose down -v` eliminaría el volumen y sus datos.
 - Cambiar `PGPASSWORD` en `.env` no cambia la contraseña de una base ya inicializada. La configuración inicial se usa cuando el volumen está vacío.
@@ -148,3 +148,29 @@ npm start
 `npm run build` genera JavaScript en `dist/`, y `npm start` ejecuta esa compilación. Detener el servidor de desarrollo antes de iniciar el compilado para liberar el puerto 3000.
 
 El archivo `package-lock.json` fija las versiones instaladas. Las dependencias y `dist/` están excluidos de Git.
+
+### Cambiar el estado y consultar el historial
+
+Ejecutar `npm run db:migrate` para aplicar la migración 003. El flujo permitido es `open → in_progress → resolved`. No se permiten saltos, retrocesos ni repetir un estado.
+
+`PATCH /tickets/:id/status` recibe exactamente `expectedStatus`, `status` y `reason`. El motivo es obligatorio, de 10 a 2000 caracteres después de quitar espacios exteriores. Al resolver debe describir la solución; el sistema comprueba el formato, no que el problema haya quedado efectivamente solucionado.
+
+```powershell
+# Usar el identificador de un ticket abierto creado previamente.
+$ticketId = $ticket.id
+$change = @{
+  expectedStatus = 'open'
+  status = 'in_progress'
+  reason = 'Se inicia la revisión del problema reportado.'
+} | ConvertTo-Json
+Invoke-RestMethod -Method Patch -Uri "http://127.0.0.1:3000/tickets/$ticketId/status" -ContentType 'application/json' -Body $change
+Invoke-RestMethod -Uri "http://127.0.0.1:3000/tickets/$ticketId/history"
+```
+
+Respuesta: 204 sin cuerpo cuando se guarda, 400 para formato inválido, 404 si no existe y 409 para transición no permitida o estado desactualizado. Para resolver, enviar `expectedStatus: in_progress`, `status: resolved` y la explicación de la solución en `reason`.
+
+El repositorio bloquea la fila durante la transacción, verifica el estado esperado y guarda estado e historial juntos. Un fallo revierte ambos cambios. La comparación del estado es suficiente para este flujo sin retrocesos; si se añaden reaperturas deberá revisarse el control de concurrencia.
+
+`GET /tickets/:id/history` devuelve `{ data: [...] }` con identificador del evento, estado anterior, estado nuevo, motivo y fecha UTC, del más antiguo al más reciente. Un ticket recién creado tiene historial vacío: su creación está en `createdAt`. No se inventan eventos para tickets anteriores a la migración. Por ahora hay como máximo dos transiciones por ticket.
+
+No hay actor autenticado ni confirmación del solicitante: `resolved` significa que se registró una solución. La demo sigue siendo local y sin permisos por usuario. Las rutas no permiten editar ni eliminar el historial, pero esto no constituye un registro de auditoría inmutable ante un administrador de la base de datos.

@@ -10,9 +10,27 @@ export interface CreateTicketInput {
 }
 
 /** Forma inicial del ticket al crearse; el ciclo de atención se definirá después. */
-export interface CreatedTicket extends CreateTicketInput {
+export type TicketStatus = 'open' | 'in_progress' | 'resolved';
+
+export interface Ticket extends CreateTicketInput {
   id: string;
   requesterId: string;
-  status: 'open';
+  status: TicketStatus;
   createdAt: string;
+}
+
+export interface CreatedTicket extends Ticket { status: 'open' }
+
+export interface StatusChange {
+  expectedStatus: TicketStatus;
+  status: TicketStatus;
+  reason: string;
+}
+
+export interface TicketHistory {
+  id: string;
+  previousStatus: TicketStatus;
+  status: TicketStatus;
+  reason: string;
+  changedAt: string;
 }
