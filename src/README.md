@@ -11,4 +11,4 @@ Esta separación permite probar las respuestas sin iniciar un servidor externo.
 
 `app.register()` incorpora cada grupo como un plugin de Fastify: una función que recibe la aplicación y añade sus rutas. `FastifyInstance` describe el tipo de ese parámetro para TypeScript. En las respuestas, `...projectInfo` copia los campos de información del proyecto.
 
-Las funcionalidades de tickets y métricas se incorporarán después. Sus carpetas se crearán cuando comience su implementación.
+`tickets/ticket.types.ts` describe la entrada y el resultado inicial de creación de un ticket. Todavía no hay rutas ni almacenamiento de tickets. Las métricas se incorporarán después.
