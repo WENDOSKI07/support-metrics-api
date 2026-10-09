@@ -53,4 +53,6 @@ Ejecutar `npm test` para comprobar los casos válidos, los límites y los rechaz
 
 ## Qué comprueban los tipos
 
+El repositorio declara `TicketRow` para describir las filas consultadas: PostgreSQL devuelve `createdAt` como `Date`. `toTicket()` selecciona los campos de respuesta y convierte la fecha a texto ISO. El tipo ayuda durante la compilación; no valida el esquema SQL en ejecución. Las migraciones y pruebas de integración comprueban esa correspondencia.
+
 Una interfaz TypeScript comprueba el código durante la compilación. Las tablas se crean mediante migraciones SQL, la validación examina el JSON en ejecución y el repositorio persiste el resultado. Los permisos siguen pendientes: esta demo es exclusivamente local.
