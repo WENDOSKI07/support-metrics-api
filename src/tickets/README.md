@@ -1,6 +1,19 @@
 # Datos iniciales de tickets
 
-Este módulo contiene los tipos de creación y una función de validación independiente. Todavía no hay rutas de tickets, almacenamiento ni autenticación implementados.
+Este módulo contiene los tipos de creación, la validación y la construcción de un ticket en memoria. Todavía no hay rutas de tickets, almacenamiento ni autenticación implementados.
+
+## Construcción del ticket
+
+`ticket.factory.ts` contiene `buildTicket(input, requesterId)`. Una factory es una función que construye un objeto con sus valores iniciales.
+
+1. Comprueba que el llamador proporciona un identificador de solicitante no vacío.
+2. Valida y normaliza los datos del formulario con `validateCreateTicket`.
+3. Si son válidos, genera un UUID, asigna `open` y registra la fecha actual en UTC.
+4. Devuelve `{ success: true, ticket }`; una entrada inválida devuelve `{ success: false, error }` sin ticket.
+
+El segundo argumento deberá provenir de la identidad verificada por el servidor, no del JSON ni de una cabecera libre enviada por el usuario. Comprobar que es texto no autentica a nadie. Una llamada interna sin ese identificador lanza `TypeError` para señalar un error de integración.
+
+La función solo construye un objeto: no lo guarda, no registra historial y no detecta reintentos. Dos llamadas válidas generan identificadores diferentes. Persistencia, historial inicial e idempotencia se abordarán al diseñar la operación completa de creación.
 
 ## Entrada y resultado
 
