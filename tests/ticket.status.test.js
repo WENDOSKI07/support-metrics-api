@@ -14,7 +14,7 @@ test('valida motivo, campos exactos y límites sin modificar la entrada', () => 
   const change = { expectedStatus: 'in_progress', status: 'resolved', reason: '  Solución documentada.  ' };
   assert.equal(validateStatusChange(change).reason, 'Solución documentada.');
   assert.equal(change.reason, '  Solución documentada.  ');
-  for (const reason of ['', 'x'.repeat(9), 'x'.repeat(2001), 'texto con \0 nulo', 42]) {
+  for (const reason of ['', 'x'.repeat(9), 'x'.repeat(2001), 'texto con \0 nulo', 'motivo con \ud800 roto', 'motivo con \udfff roto', 42]) {
     assert.equal(validateStatusChange({ ...change, reason }), undefined);
   }
   for (const reason of ['x'.repeat(10), '🐘'.repeat(2000)]) assert.ok(validateStatusChange({ ...change, reason }));

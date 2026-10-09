@@ -1,4 +1,5 @@
 import { type StatusChange } from './ticket.types.js';
+import { isStorableText } from './ticket.text.js';
 
 export function validateStatusChange(input: unknown): StatusChange | undefined {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return undefined;
@@ -9,7 +10,7 @@ export function validateStatusChange(input: unknown): StatusChange | undefined {
   if (!states.includes(value.expectedStatus as string) || !states.includes(value.status as string) ||
       typeof value.reason !== 'string') return undefined;
   const reason = value.reason.trim();
-  if (reason.includes('\0') || Array.from(reason).length < 10 || Array.from(reason).length > 2000) return undefined;
+  if (!isStorableText(reason) || Array.from(reason).length < 10 || Array.from(reason).length > 2000) return undefined;
   return { expectedStatus: value.expectedStatus, status: value.status, reason } as StatusChange;
 }
 

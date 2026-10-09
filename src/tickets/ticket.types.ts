@@ -12,6 +12,19 @@ export interface CreateTicketInput {
 /** Forma inicial del ticket al crearse; el ciclo de atención se definirá después. */
 export type TicketStatus = 'open' | 'in_progress' | 'resolved';
 
+export interface TicketFilters {
+  status?: TicketStatus;
+  category?: TicketCategory;
+  createdFrom?: string;
+  createdBefore?: string;
+}
+
+export interface TicketCounts {
+  total: number;
+  byStatus: Record<TicketStatus, number>;
+  resolution: { averageSeconds: number | null; sampleSize: number; excludedCount: number };
+}
+
 export interface Ticket extends CreateTicketInput {
   id: string;
   requesterId: string;

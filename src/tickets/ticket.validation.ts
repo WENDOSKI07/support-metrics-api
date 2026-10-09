@@ -1,4 +1,5 @@
 import { ticketCategories, type CreateTicketInput } from './ticket.types.js';
+import { isStorableText } from './ticket.text.js';
 
 type ValidationResult =
   | { success: true; data: CreateTicketInput }
@@ -38,6 +39,10 @@ export function validateCreateTicket(input: unknown): ValidationResult {
 
   const title = body.title.trim();
   const description = body.description.trim();
+
+  for (const [field, value] of [['title', title], ['description', description]]) {
+    if (!isStorableText(value)) return invalid(field, 'El texto contiene caracteres no válidos.');
+  }
 
   if (Array.from(title).length < 5 || Array.from(title).length > 120) {
     return invalid('title', 'El título debe tener entre 5 y 120 caracteres.');

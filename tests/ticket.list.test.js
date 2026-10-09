@@ -35,7 +35,8 @@ test('rechaza paginación inválida, parámetros duplicados y desconocidos', asy
   const app = buildTestApp();
   t.after(() => app.close());
   for (const query of ['page=0', 'page=-1', 'page=1.5', 'page=10001', 'limit=101', 'limit=0',
-    'limit=', 'limit=abc', 'limit=1e2', 'page=1&page=2', 'limit=2&limit=3', 'sort=title']) {
+    'limit=', 'limit=abc', 'limit=1e2', 'page=1&page=2', 'limit=2&limit=3', 'sort=title',
+    'status=closed', 'status=', 'status=open&status=resolved', 'category=invalid', 'category=data&category=usage']) {
     const response = await app.inject(`/tickets?${query}`);
     assert.equal(response.statusCode, 400, query);
   }

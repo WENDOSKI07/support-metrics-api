@@ -8,6 +8,17 @@ const validInput = {
   category: 'functionality',
 };
 
+test('rechaza NUL y Unicode malformado en ambos textos, conservando emojis válidos', () => {
+  for (const field of ['title', 'description']) {
+    for (const character of ['\0', '\ud800', '\udfff']) {
+      const result = validateCreateTicket({ ...validInput, [field]: `Texto de prueba ${character}` });
+      assert.equal(result.success, false);
+      assert.equal(result.error.field, field);
+    }
+    assert.equal(validateCreateTicket({ ...validInput, [field]: 'Texto válido 🐘 中文' }).success, true);
+  }
+});
+
 test('acepta las categorías iniciales y devuelve los datos esperados', () => {
   for (const category of ['functionality', 'data', 'usage']) {
     const input = { ...validInput, category };

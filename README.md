@@ -2,7 +2,7 @@
 
 Proyecto de aprendizaje y portafolio: una API para registrar solicitudes de soporte y entender cómo se atienden.
 
-**Estado:** demo local con creación, consulta, listado paginado y cambios de estado con historial en PostgreSQL mediante Docker. Autenticación y métricas siguen pendientes.
+**Estado:** demo local con creación, consulta, listado paginado y cambios de estado con historial en PostgreSQL mediante Docker. Incluye conteos por estado y promedio de resolución; autenticación sigue pendiente.
 
 ## Problema y usuarios
 
@@ -174,3 +174,60 @@ El repositorio bloquea la fila durante la transacción, verifica el estado esper
 `GET /tickets/:id/history` devuelve `{ data: [...] }` con identificador del evento, estado anterior, estado nuevo, motivo y fecha UTC, del más antiguo al más reciente. Un ticket recién creado tiene historial vacío: su creación está en `createdAt`. No se inventan eventos para tickets anteriores a la migración. Por ahora hay como máximo dos transiciones por ticket.
 
 No hay actor autenticado ni confirmación del solicitante: `resolved` significa que se registró una solución. La demo sigue siendo local y sin permisos por usuario. Las rutas no permiten editar ni eliminar el historial, pero esto no constituye un registro de auditoría inmutable ante un administrador de la base de datos.
+
+### Filtrar el listado
+
+`GET /tickets?status=open&category=data&page=1&limit=20` combina filtros de estado y categoría. Ambos son opcionales y se aplican antes de paginar; `hasNext` corresponde a los resultados filtrados.
+
+- Estados: `open`, `in_progress`, `resolved`.
+- Categorías: `functionality`, `data`, `usage`.
+- Valores vacíos, desconocidos o parámetros repetidos devuelven 400.
+- Sin coincidencias devuelve 200 con `data: []`.
+
+Los filtros usan valores parametrizados en SQL. No cambian los permisos de la demo local ni crean nuevas migraciones.
+
+### Filtrar por fecha de creación
+
+Ejemplo: `GET /tickets?createdFrom=2026-10-01&createdBefore=2026-11-01&status=open`.
+
+- `createdFrom` incluye la medianoche UTC del día indicado.
+- `createdBefore` excluye la medianoche UTC del día indicado: el ejemplo abarca todo octubre en UTC.
+- Formato estricto `AAAA-MM-DD`, años 0001 a 9999; se rechazan fechas inexistentes, valores vacíos y parámetros repetidos.
+- Ambos límites son opcionales. Cuando están presentes, `createdBefore` debe ser posterior a `createdFrom`; un rango igual o invertido devuelve 400.
+- Filtran `createdAt`, no la fecha de resolución. Se combinan con categoría, estado y paginación antes de limitar resultados.
+- Los días son UTC, no días del calendario local de Colombia. No dependen de la zona horaria de PostgreSQL.
+
+La validación del listado está en `src/tickets/ticket.query.ts`; las rutas se encargan de HTTP y el repositorio de SQL. No se requieren dependencias ni migraciones nuevas.
+
+### Métricas de tickets
+
+`GET /metrics/tickets` devuelve `total`, `byStatus` (open, in_progress, resolved) y `scope`, que indica la definición y filtros de la consulta.
+
+Ejemplo: `GET /metrics/tickets?createdFrom=2026-10-01&createdBefore=2026-11-01&category=data`.
+
+**Definición:** número de tickets creados en el periodo solicitado, agrupados por su estado actual al ejecutar la consulta. El periodo usa UTC, inicio inclusivo y fin exclusivo. Sin fechas se cuenta todo el historial de creación disponible. La categoría es opcional. Sin coincidencias, total y todos los estados son cero.
+
+La consulta SQL agrupa tickets y toma una sola fecha de resolución por ticket del historial, sin paginar. Así cada ticket se cuenta una vez y los grupos se calculan en una misma consulta. No admite `page`, `limit` ni `status`; esos parámetros devuelven 400. La suma de los estados equivale al total.
+
+**Límites:** no reconstruye el estado de los tickets al final de un periodo pasado; los conteos pueden cambiar si se atienden después. No mide incidentes únicos, disponibilidad ni satisfacción. Resuelto significa solución registrada, no confirmada por el solicitante. Esta demo usa datos ficticios y permanece sin autenticación.
+
+**Validación:** integration/metrics.test.js contrasta cinco registros conocidos con los conteos esperados, el listado y la suma de estados. Comprueba filtros combinados, días UTC con PostgreSQL en zona Bogotá, conjunto vacío y parámetros inválidos. Sus datos se aíslan en una tabla temporal y se descartan al terminar.
+
+
+### Tiempo promedio de resolución
+
+La misma ruta `/metrics/tickets` añade `resolution`:
+
+```json
+{ "averageSeconds": 120, "sampleSize": 2, "excludedCount": 0 }
+```
+
+- `averageSeconds`: promedio aritmético de segundos transcurridos desde creación hasta la primera transición a `resolved`, entre los tickets actualmente resueltos con duración válida. Incluye noches y fines de semana; no representa horas de trabajo.
+- `sampleSize`: cantidad de tickets utilizados. Sin observaciones válidas devuelve 0 y el promedio es `null`; una duración real de cero sí es válida.
+- `excludedCount`: tickets resueltos sin evento de resolución o con fecha anterior a la creación. Se excluyen del promedio pero siguen en los conteos por estado.
+- Los filtros siguen seleccionando por **fecha de creación**, aunque la solución se haya registrado fuera del periodo.
+- Los tickets abiertos o en atención no entran en el promedio. Por eso no mide el tiempo de espera de las solicitudes pendientes ni garantiza calidad del servicio.
+
+Prueba reproducible: duraciones de 60 y 180 segundos producen promedio 120 y muestra 2. Se verifica también un ticket creado al final de enero y resuelto en febrero, historial adicional, ausencia de fechas y duración negativa. No hay cambios de esquema.
+
+Los textos de creación y motivos rechazan el carácter NUL y secuencias Unicode malformadas con HTTP 400, para evitar errores de almacenamiento o alteraciones al codificar UTF-8. Se conservan emojis y otros caracteres Unicode válidos.

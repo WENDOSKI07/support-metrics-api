@@ -6,8 +6,11 @@ export function buildTestApp() {
   return buildApp({
     async save(ticket) { tickets.set(ticket.id, structuredClone(ticket)); },
     async findById(id) { return tickets.get(id); },
-    async list(limit, offset) {
+    async list(limit, offset, filters = {}) {
       return [...tickets.values()]
+        .filter(ticket => (!filters.status || ticket.status === filters.status) && (!filters.category || ticket.category === filters.category))
+        .filter(ticket => (!filters.createdFrom || ticket.createdAt >= `${filters.createdFrom}T00:00:00.000Z`) &&
+          (!filters.createdBefore || ticket.createdAt < `${filters.createdBefore}T00:00:00.000Z`))
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
         .slice(offset, offset + limit);
     },
