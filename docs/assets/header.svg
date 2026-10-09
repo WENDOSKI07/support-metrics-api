@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="300" viewBox="0 0 1280 300" role="img" aria-labelledby="title desc">
+<title id="title">Support Metrics API</title><desc id="desc">Tickets, conversaciones y métricas. Backend con Node.js, TypeScript y PostgreSQL.</desc>
+<rect width="1280" height="300" rx="18" fill="#171925"/>
+<rect x="48" y="46" width="42" height="42" rx="11" fill="#7475ed"/>
+<text x="69" y="75" text-anchor="middle" fill="white" font-family="Segoe UI,Arial,sans-serif" font-size="28" font-weight="700">S</text>
+<text x="108" y="74" fill="#c8c9dd" font-family="Segoe UI,Arial,sans-serif" font-size="18">Support Metrics</text>
+<text x="48" y="156" fill="white" font-family="Segoe UI,Arial,sans-serif" font-size="48" font-weight="650" letter-spacing="-1">Cada ticket tiene una historia.</text>
+<text x="50" y="199" fill="#bbbdd0" font-family="Segoe UI,Arial,sans-serif" font-size="21">Registra el problema. Sigue la atención. Entiende los resultados.</text>
+<path d="M50 243H1230" stroke="#343748"/>
+<text x="50" y="274" fill="#aeb0c7" font-family="Segoe UI,Arial,sans-serif" font-size="15">Node.js  /  TypeScript  /  Fastify  /  PostgreSQL</text>
+<text x="1230" y="274" text-anchor="end" fill="#aeb0c7" font-family="Segoe UI,Arial,sans-serif" font-size="15">Proyecto de aprendizaje y portafolio</text>
+</svg>
