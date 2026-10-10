@@ -181,3 +181,14 @@ body:not(.dashboard) > header { padding: 24px; display: flex; justify-content: s
 #management-form label { margin-top:10px; }
 @media(max-width:850px) { .metrics { grid-template-columns:repeat(3,minmax(0,1fr)); } .metrics .duration { grid-column:auto; } .metrics>div { border-bottom:1px solid var(--line); } }
 @media(max-width:560px) { .metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+.operational-metrics { display:grid; grid-template-columns:1.25fr 1fr; gap:20px; margin-top:20px; }
+.operational-metrics > div { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:20px; }
+.operational-metrics p { font-size:12px; line-height:1.6; }
+.age-buckets { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:18px 0; }
+.age-buckets dt { color:var(--muted); font-size:11px; line-height:1.5; }
+.age-buckets dd { margin:8px 0 0; font-size:22px; font-variant-numeric:tabular-nums; }
+.attention-value { display:block; font-size:25px; margin:14px 0; }
+#database-status.unavailable { color:#a3273c; }
+@media(max-width:1000px) { .operational-metrics {grid-template-columns:1fr;} }
+@media(max-width:560px) { .age-buckets {grid-template-columns:repeat(2,minmax(0,1fr));} .topbar {gap:8px; height:auto; min-height:48px; flex-wrap:wrap; padding-block:10px;} }

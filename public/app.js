@@ -80,6 +80,22 @@ async function loadList() {
   }
 }
 
+function duration(seconds) {
+  if (seconds === null) return 'Sin muestra';
+  if (seconds >= 86400) return `${(seconds / 86400).toFixed(1)} días`;
+  if (seconds >= 3600) return `${(seconds / 3600).toFixed(1)} h`;
+  return `${(seconds / 60).toFixed(1)} min`;
+}
+async function loadReadiness() {
+  try {
+    await api('/ready');
+    $('database-status').textContent = 'PostgreSQL disponible';
+    $('database-status').classList.remove('unavailable');
+  } catch {
+    $('database-status').textContent = 'PostgreSQL sin verificar · Reintenta con Actualizar';
+    $('database-status').classList.add('unavailable');
+  }
+}
 async function loadMetrics() {
   const version = ++metricsVersion;
   metricsSnapshot = null; $('export-metrics').disabled = true;
@@ -93,17 +109,25 @@ async function loadMetrics() {
     const seconds = data.resolution.averageSeconds;
     $('average').textContent = seconds === null ? 'Sin muestra' : seconds >= 3600 ? `${(seconds / 3600).toFixed(1)} h` : `${(seconds / 60).toFixed(1)} min`;
     $('sample').textContent = `${data.resolution.sampleSize} tickets utilizados · ${data.resolution.excludedCount} excluidos`;
-    metricsSnapshot = { data, consultedAt: new Date().toISOString() };
+    $('pending-average').textContent = duration(data.pendingAge.averageSeconds);
+    $('pending-oldest').textContent = duration(data.pendingAge.oldestSeconds);
+    $('pending-sample').textContent = `${data.pendingAge.sampleSize} pendientes utilizados · ${data.pendingAge.excludedCount} excluidos`;
+    for (const [id,key] of [['age-under24','under24h'],['age-1to3','from1To3Days'],['age-3to7','from3To7Days'],['age-7plus','atLeast7Days']]) $(id).textContent = data.pendingAge.buckets[key];
+    $('attention-average').textContent = duration(data.firstAttention.averageSeconds);
+    $('attention-sample').textContent = `${data.firstAttention.sampleSize} tickets utilizados · ${data.firstAttention.excludedCount} excluidos`;
+    $('attention-waiting').textContent = `${data.firstAttention.notStartedCount} abiertos sin atención registrada; no entran en el promedio.`;
+    $('metrics-measured').textContent = `Consulta: ${date(data.measuredAt)}. Usa Actualizar para renovar los datos.`;
+    metricsSnapshot = { data, consultedAt: data.measuredAt };
     $('export-metrics').disabled = false;
   } catch (error) {
     if (version !== metricsVersion) return;
-    for (const id of ['total', 'open', 'in-progress', 'resolved', 'closed', 'average']) $(id).textContent = '—';
-    $('sample').textContent = 'No disponible'; notice(error.message, true);
+    for (const id of ['total', 'open', 'in-progress', 'resolved', 'closed', 'average','pending-average','pending-oldest','age-under24','age-1to3','age-3to7','age-7plus','attention-average']) $(id).textContent = '—';
+    for (const id of ['sample','pending-sample','attention-sample','attention-waiting','metrics-measured']) $(id).textContent = 'No disponible'; notice(error.message, true);
   }
 }
 
 async function refresh() {
-  await Promise.all([loadList(), loadMetrics()]);
+  await Promise.all([loadList(), loadMetrics(), loadReadiness()]);
 }
 
 $('export-metrics').addEventListener('click', () => {
@@ -111,11 +135,17 @@ $('export-metrics').addEventListener('click', () => {
   const { data, consultedAt } = metricsSnapshot;
   const headers = ['consulted_at_utc', 'date_field', 'time_zone', 'status_basis', 'category',
     'created_from_inclusive', 'created_before_exclusive', 'total', 'open', 'in_progress', 'resolved', 'closed',
-    'average_resolution_seconds', 'sample_size', 'excluded_count'];
+    'average_resolution_seconds', 'sample_size', 'excluded_count',
+    'pending_average_seconds','pending_oldest_seconds','pending_sample_size','pending_excluded_count',
+    'pending_under_24h','pending_1_to_3_days','pending_3_to_7_days','pending_at_least_7_days',
+    'first_attention_average_seconds','first_attention_sample_size','first_attention_not_started','first_attention_excluded'];
   const values = [consultedAt, data.scope.dateField, data.scope.timeZone, data.scope.statusBasis,
     data.scope.category, data.scope.createdFrom, data.scope.createdBefore, data.total,
     data.byStatus.open, data.byStatus.in_progress, data.byStatus.resolved, data.byStatus.closed,
-    data.resolution.averageSeconds, data.resolution.sampleSize, data.resolution.excludedCount];
+    data.resolution.averageSeconds, data.resolution.sampleSize, data.resolution.excludedCount,
+    data.pendingAge.averageSeconds,data.pendingAge.oldestSeconds,data.pendingAge.sampleSize,data.pendingAge.excludedCount,
+    data.pendingAge.buckets.under24h,data.pendingAge.buckets.from1To3Days,data.pendingAge.buckets.from3To7Days,data.pendingAge.buckets.atLeast7Days,
+    data.firstAttention.averageSeconds,data.firstAttention.sampleSize,data.firstAttention.notStartedCount,data.firstAttention.excludedCount];
   // Comillas CSV y protección frente a fórmulas al abrir texto en una hoja de cálculo.
   const cell = value => {
     let text = value == null ? '' : String(value);

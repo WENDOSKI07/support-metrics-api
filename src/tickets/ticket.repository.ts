@@ -23,6 +23,7 @@ function toTicket(row: TicketRow): Ticket {
 }
 
 export interface TicketRepository {
+  checkReady(): Promise<void>;
   addComment(ticketId: string, body: string): Promise<TicketComment | 'closed' | undefined>;
   comments(ticketId: string, limit: number, offset: number): Promise<TicketComment[]>;
   counts(filters: Omit<TicketFilters, 'status' | 'q' | 'priority' | 'assignee'>): Promise<TicketCounts>;
@@ -37,6 +38,19 @@ export interface TicketRepository {
 
 export function postgresTicketRepository(pool: Pool): TicketRepository {
   return {
+    async checkReady() {
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query("SET LOCAL statement_timeout = '2s'");
+        await client.query("SET LOCAL lock_timeout = '1s'");
+        await client.query(`SELECT t.id,t.priority,t.assignee_id,t.version,h.status,c.body,m.kind,s.name
+          FROM tickets t CROSS JOIN ticket_history h CROSS JOIN ticket_comments c
+          CROSS JOIN ticket_management_history m CROSS JOIN schema_migrations s LIMIT 0`);
+        await client.query('COMMIT');
+      } catch (error) { await client.query('ROLLBACK').catch(() => {}); throw error; }
+      finally { client.release(); }
+    },
     async addComment(ticketId, body) {
       const client = await pool.connect();
       try {
@@ -90,46 +104,60 @@ export function postgresTicketRepository(pool: Pool): TicketRepository {
       return result.rows.map(row => ({...row,changedAt:row.changedAt.toISOString()}));
     },
     async counts(filters) {
-      // La subconsulta devuelve una sola fecha por ticket para no duplicar conteos.
-      const result = await pool.query<{ status: Ticket['status']; count: string; sample: string; average: string | null }>(
-        `SELECT t.status, count(*)::text AS count,
-           count(*) FILTER (WHERE t.status IN ('resolved', 'closed') AND h.resolved_at >= t.created_at)::text AS sample,
-           avg(extract(epoch FROM (h.resolved_at - t.created_at)))
-             FILTER (WHERE t.status IN ('resolved', 'closed') AND h.resolved_at >= t.created_at)::text AS average
-         FROM tickets t
-         LEFT JOIN LATERAL (
-           SELECT max(changed_at) AS resolved_at FROM ticket_history
-           WHERE ticket_id = t.id AND status = 'resolved'
-         ) h ON true
-         WHERE ($1::text IS NULL OR category = $1)
-           AND ($2::timestamptz IS NULL OR created_at >= $2)
-           AND ($3::timestamptz IS NULL OR created_at < $3)
-         GROUP BY t.status`,
+      // Una fila por ticket y una sola instantánea SQL para todos los indicadores.
+      const result = await pool.query<{ metrics: TicketCounts }>(
+        `WITH observations AS (
+          SELECT t.status, t.created_at,
+            extract(epoch FROM (statement_timestamp() - t.created_at)) AS age,
+            extract(epoch FROM (h.resolved_at - t.created_at)) AS resolution,
+            extract(epoch FROM (h.started_at - t.created_at)) AS attention,
+            h.started_at,
+            t.status IN ('open','in_progress') AS pending
+          FROM tickets t
+          LEFT JOIN LATERAL (
+            SELECT max(changed_at) FILTER (WHERE status='resolved') AS resolved_at,
+                   min(changed_at) FILTER (WHERE status='in_progress') AS started_at
+            FROM ticket_history WHERE ticket_id=t.id
+          ) h ON true
+          WHERE ($1::text IS NULL OR t.category=$1)
+            AND ($2::timestamptz IS NULL OR t.created_at >= $2)
+            AND ($3::timestamptz IS NULL OR t.created_at < $3)
+        )
+        SELECT json_build_object(
+          'measuredAt', to_char(statement_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+          'total', count(*),
+          'byStatus', json_build_object(
+            'open',count(*) FILTER(WHERE status='open'),
+            'in_progress',count(*) FILTER(WHERE status='in_progress'),
+            'resolved',count(*) FILTER(WHERE status='resolved'),
+            'closed',count(*) FILTER(WHERE status='closed')),
+          'resolution', json_build_object(
+            'averageSeconds',avg(resolution) FILTER(WHERE status IN ('resolved','closed') AND resolution>=0),
+            'sampleSize',count(*) FILTER(WHERE status IN ('resolved','closed') AND resolution>=0),
+            'excludedCount',count(*) FILTER(WHERE status IN ('resolved','closed') AND (resolution IS NULL OR resolution<0))),
+          'pendingAge', json_build_object(
+            'averageSeconds',avg(age) FILTER(WHERE pending AND age>=0),
+            'oldestSeconds',max(age) FILTER(WHERE pending AND age>=0),
+            'sampleSize',count(*) FILTER(WHERE pending AND age>=0),
+            'excludedCount',count(*) FILTER(WHERE pending AND age<0),
+            'buckets',json_build_object(
+              'under24h',count(*) FILTER(WHERE pending AND age>=0 AND age<86400),
+              'from1To3Days',count(*) FILTER(WHERE pending AND age>=86400 AND age<259200),
+              'from3To7Days',count(*) FILTER(WHERE pending AND age>=259200 AND age<604800),
+              'atLeast7Days',count(*) FILTER(WHERE pending AND age>=604800))),
+          'firstAttention', json_build_object(
+            'averageSeconds',avg(attention) FILTER(WHERE attention>=0 AND started_at<=statement_timestamp()),
+            'sampleSize',count(*) FILTER(WHERE attention>=0 AND started_at<=statement_timestamp()),
+            'notStartedCount',count(*) FILTER(WHERE started_at IS NULL AND status='open' AND age>=0),
+            'excludedCount',count(*) FILTER(WHERE attention<0 OR started_at>statement_timestamp()
+              OR (started_at IS NULL AND (status<>'open' OR age<0))))
+        ) AS metrics FROM observations`,
         [filters.category ?? null,
           filters.createdFrom ? `${filters.createdFrom}T00:00:00.000Z` : null,
-          filters.createdBefore ? `${filters.createdBefore}T00:00:00.000Z` : null],
-      );
-      const counts: TicketCounts = {
-        total: 0, byStatus: { open: 0, in_progress: 0, resolved: 0, closed: 0 },
-        resolution: { averageSeconds: null, sampleSize: 0, excludedCount: 0 },
-      };
-      let weightedSeconds = 0;
-      for (const row of result.rows) {
-        const count = Number(row.count);
-        if (!Number.isSafeInteger(count) || !Number.isSafeInteger(counts.total + count)) {
-          throw new RangeError('El conteo supera la precisión numérica admitida.');
-        }
-        counts.byStatus[row.status] = count;
-        counts.total += count;
-        if (row.status === 'resolved' || row.status === 'closed') {
-          const sample = Number(row.sample);
-          counts.resolution.sampleSize += sample;
-          counts.resolution.excludedCount += count - sample;
-          weightedSeconds += Number(row.average ?? 0) * sample;
-        }
-      }
-      if (counts.resolution.sampleSize) counts.resolution.averageSeconds = weightedSeconds / counts.resolution.sampleSize;
-      return counts;
+          filters.createdBefore ? `${filters.createdBefore}T00:00:00.000Z` : null]);
+      const metrics = result.rows[0]!.metrics;
+      if (!Number.isSafeInteger(metrics.total)) throw new RangeError('El conteo supera la precisión numérica admitida.');
+      return metrics;
     },
     async changeStatus(id, change) {
       const client = await pool.connect();

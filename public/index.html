@@ -14,11 +14,23 @@
   <div class="sidebar-footer"><span class="demo-dot" aria-hidden="true"></span><div>Espacio de demostración<small>Datos ficticios · Sin login</small></div></div>
 </aside>
 <main class="main-content">
-  <header class="topbar"><span>Mesa de soporte <span class="breadcrumb" aria-hidden="true">/</span> <strong>Tickets</strong></span><span class="local-label">Demo local</span></header>
+  <header class="topbar"><span>Mesa de soporte <span class="breadcrumb" aria-hidden="true">/</span> <strong>Tickets</strong></span><span id="database-status" class="local-label" role="status">Comprobando PostgreSQL…</span></header>
   <section class="intro"><div><h1>Tickets</h1><p>Organiza las solicitudes y da seguimiento a cada solución.</p></div><button id="new-ticket" class="primary"><span aria-hidden="true">＋</span> Crear ticket</button></section>
   <div id="overview" tabindex="-1">
     <div class="section-heading metrics-heading"><h2>Resumen de atención</h2><button id="export-metrics" class="quiet" disabled>Exportar resumen CSV</button></div>
   <section class="metrics" aria-label="Resumen de atención"><div><span>Total</span><strong id="total">—</strong></div><div><span>Abiertos</span><strong id="open">—</strong></div><div><span>En atención</span><strong id="in-progress">—</strong></div><div><span>Resueltos</span><strong id="resolved">—</strong></div><div><span>Cerrados</span><strong id="closed">—</strong></div><div class="duration"><span>Promedio de resolución</span><strong id="average">—</strong><small id="sample">Sin datos</small></div></section>
+  <section class="operational-metrics" aria-label="Antigüedad e inicio de atención">
+    <div><h3>Antigüedad de pendientes</h3><p class="muted">Abiertos y en atención, desde su creación.</p>
+      <p>Promedio <strong id="pending-average">—</strong> · Más antiguo <strong id="pending-oldest">—</strong></p>
+      <dl class="age-buckets"><div><dt>Menos de 24 h</dt><dd id="age-under24">—</dd></div><div><dt>1 a menos de 3 días</dt><dd id="age-1to3">—</dd></div><div><dt>3 a menos de 7 días</dt><dd id="age-3to7">—</dd></div><div><dt>7 días o más</dt><dd id="age-7plus">—</dd></div></dl>
+      <small id="pending-sample" class="muted">Sin datos</small>
+    </div>
+    <div><h3>Tiempo hasta iniciar atención</h3><strong id="attention-average" class="attention-value">—</strong>
+      <p class="muted">Promedio desde creación hasta la primera atención registrada; incluye noches y fines de semana.</p>
+      <p id="attention-sample" class="muted">Sin datos</p><p id="attention-waiting" class="muted"></p>
+      <p id="metrics-measured" class="muted"></p>
+    </div>
+  </section>
   <p class="metric-note">Resumen por categoría y fecha de creación. Búsqueda, estado, prioridad y responsable solo afectan la bandeja. Fechas en UTC.</p>
   </div>
   <p id="notice" role="status" aria-live="polite"></p>

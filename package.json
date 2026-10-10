@@ -15,7 +15,9 @@
     "db:down": "docker compose down",
     "db:migrate": "node --env-file=.env scripts/migrate.mjs",
     "test:db": "npm run build && node --env-file=.env --test integration",
-    "db:seed": "node --env-file=.env scripts/seed-demo.mjs"
+    "db:seed": "node --env-file=.env scripts/seed-demo.mjs",
+    "db:backup": "node --env-file=.env scripts/db-backup.mjs",
+    "db:verify-backup": "node --env-file=.env scripts/db-verify-backup.mjs"
   },
   "dependencies": {
     "fastify": "^5.12.5",

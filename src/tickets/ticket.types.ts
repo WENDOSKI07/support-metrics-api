@@ -23,6 +23,12 @@ export interface TicketFilters {
 }
 
 export interface TicketCounts {
+  measuredAt: string;
+  pendingAge: {
+    averageSeconds: number | null; oldestSeconds: number | null; sampleSize: number; excludedCount: number;
+    buckets: { under24h: number; from1To3Days: number; from3To7Days: number; atLeast7Days: number };
+  };
+  firstAttention: { averageSeconds: number | null; sampleSize: number; notStartedCount: number; excludedCount: number };
   total: number;
   byStatus: Record<TicketStatus, number>;
   resolution: { averageSeconds: number | null; sampleSize: number; excludedCount: number };

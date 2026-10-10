@@ -4,6 +4,7 @@ import { buildApp } from '../../dist/app.js';
 export function buildTestApp() {
   const tickets = new Map();
   return buildApp({
+    async checkReady() {},
     async save(ticket) { tickets.set(ticket.id, structuredClone(ticket)); },
     async findById(id) { return tickets.get(id); },
     async list(limit, offset, filters = {}) {

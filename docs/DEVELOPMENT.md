@@ -249,3 +249,7 @@ La consulta usa SQL parametrizado. La búsqueda por subcadena puede recorrer la 
 ## Prioridad, responsable y cierre
 
 Consultar [reglas y ejemplos completos](TICKET-MANAGEMENT.md). La migración 005 añade versión, prioridad, responsable y el historial de gestión. La modificación de estado ahora exige expectedVersion.
+
+## Disponibilidad, respaldos y analítica operativa
+
+Consultar [la guía de confiabilidad y analítica](RELIABILITY-ANALYTICS.md) para /ready, copias locales, restauración de prueba y los campos pendingAge y firstAttention.

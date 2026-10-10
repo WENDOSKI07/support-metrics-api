@@ -136,6 +136,16 @@ Los comentarios se muestran como texto plano. La interfaz conserva la política 
 
 Los filtros de fechas usan **UTC**. Categoría y fechas afectan el resumen; búsqueda, estado, prioridad y responsable solo filtran la bandeja. Estas cifras no miden satisfacción ni disponibilidad del servicio.
 
+## Confiabilidad y analítica operativa
+
+- **Disponibilidad:** `/ready` comprueba PostgreSQL y el esquema necesario; el dashboard muestra su resultado.
+- **Respaldo local:** `npm run db:backup` crea una copia excluida de Git.
+- **Restauración comprobada:** `npm run db:verify-backup` restaura en una base temporal y compara datos y esquema.
+- **Pendientes:** promedio, caso más antiguo y rangos de antigüedad.
+- **Primera atención:** tiempo hasta comenzar, muestra utilizada y solicitudes aún sin atender.
+
+Los nuevos indicadores también se exportan a CSV. [Definiciones, límites e instrucciones de recuperación](docs/RELIABILITY-ANALYTICS.md).
+
 ## Comprobaciones
 
 ```sh
@@ -150,6 +160,8 @@ GitHub Actions está desactivado. Las comprobaciones se ejecutan localmente.
 [Consultar la guía técnica](docs/DEVELOPMENT.md)
 
 ## Próximas etapas
+
+[Notas preparadas para v0.1.0](docs/RELEASE-v0.1.0.md): funcionalidades, validaciones y límites de la demo.
 
 - Identidad y permisos por usuario.
 - Vinculación de tickets a incidentes compartidos.

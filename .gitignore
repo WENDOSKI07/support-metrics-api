@@ -25,3 +25,6 @@ coverage/
 *.log
 .DS_Store
 Thumbs.db
+
+# Copias de seguridad locales (datos del proyecto)
+/backups/

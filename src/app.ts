@@ -8,7 +8,7 @@ import { webRoutes } from './routes/web.routes.js';
 export function buildApp(repository: TicketRepository, options: FastifyServerOptions = {}) {
   const app = Fastify(options);
 
-  app.register(healthRoutes);
+  app.register(healthRoutes, { checkReady: () => repository.checkReady() });
   app.register(webRoutes);
   app.register(infoRoutes);
   app.register(ticketRoutes, { repository });
