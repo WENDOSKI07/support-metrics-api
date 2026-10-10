@@ -1,4 +1,5 @@
-import { ticketCategories, type TicketFilters } from './ticket.types.js';
+import { priorities, ticketCategories, type TicketFilters } from './ticket.types.js';
+import { demoAgents } from './ticket.management.js';
 import { isStorableText } from './ticket.text.js';
 
 type ListQueryResult =
@@ -14,7 +15,7 @@ function isDate(value: unknown): value is string {
 
 export function validateListQuery(query: Record<string, unknown>): ListQueryResult {
   for (const field of Object.keys(query)) {
-    if (!['page', 'limit', 'status', 'category', 'createdFrom', 'createdBefore', 'q'].includes(field)) {
+    if (!['page', 'limit', 'status', 'category', 'createdFrom', 'createdBefore', 'q', 'priority', 'assignee'].includes(field)) {
       return { success: false, error: { field, message: 'Parámetro no permitido.' } };
     }
   }
@@ -38,10 +39,10 @@ export function validateListQuery(query: Record<string, unknown>): ListQueryResu
     }
     filters.q = q;
   }
-  for (const field of ['status', 'category'] as const) {
+  for (const field of ['status', 'category', 'priority', 'assignee'] as const) {
     const value = query[field];
     if (value === undefined) continue;
-    const allowed: readonly string[] = field === 'status' ? ['open', 'in_progress', 'resolved'] : ticketCategories;
+    const allowed: readonly string[] = field === 'status' ? ['open', 'in_progress', 'resolved', 'closed'] : field === 'priority' ? priorities : field === 'assignee' ? ['unassigned', ...demoAgents.map(a => a.id)] : ticketCategories;
     if (typeof value !== 'string' || !allowed.includes(value)) {
       return { success: false, error: { field, message: `Valores permitidos: ${allowed.join(', ')}.` } };
     }

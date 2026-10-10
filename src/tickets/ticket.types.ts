@@ -10,9 +10,11 @@ export interface CreateTicketInput {
 }
 
 /** Forma inicial del ticket al crearse; el ciclo de atención se definirá después. */
-export type TicketStatus = 'open' | 'in_progress' | 'resolved';
+export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
 
 export interface TicketFilters {
+  priority?: TicketPriority;
+  assignee?: string;
   q?: string;
   status?: TicketStatus;
   category?: TicketCategory;
@@ -31,11 +33,15 @@ export interface Ticket extends CreateTicketInput {
   requesterId: string;
   status: TicketStatus;
   createdAt: string;
+  priority: TicketPriority;
+  assigneeId: string | null;
+  version: number;
 }
 
 export interface CreatedTicket extends Ticket { status: 'open' }
 
 export interface StatusChange {
+  expectedVersion: number;
   expectedStatus: TicketStatus;
   status: TicketStatus;
   reason: string;
@@ -46,5 +52,23 @@ export interface TicketHistory {
   previousStatus: TicketStatus;
   status: TicketStatus;
   reason: string;
+  changedAt: string;
+}
+
+export const priorities = ['low', 'normal', 'high', 'urgent'] as const;
+export type TicketPriority = typeof priorities[number];
+export interface ManagementChange {
+  expectedVersion: number;
+  kind: 'priority' | 'assignment';
+  value: string | null;
+  reason: string;
+}
+export interface ManagementHistory {
+  id: string;
+  kind: ManagementChange['kind'];
+  previousValue: string | null;
+  value: string | null;
+  reason: string;
+  version: number;
   changedAt: string;
 }

@@ -17,8 +17,9 @@
   <header class="topbar"><span>Mesa de soporte <span class="breadcrumb" aria-hidden="true">/</span> <strong>Tickets</strong></span><span class="local-label">Demo local</span></header>
   <section class="intro"><div><h1>Tickets</h1><p>Organiza las solicitudes y da seguimiento a cada solución.</p></div><button id="new-ticket" class="primary"><span aria-hidden="true">＋</span> Crear ticket</button></section>
   <div id="overview" tabindex="-1">
-  <section class="metrics" aria-label="Resumen de atención"><div><span>Total</span><strong id="total">—</strong></div><div><span>Abiertos</span><strong id="open">—</strong></div><div><span>En atención</span><strong id="in-progress">—</strong></div><div><span>Resueltos</span><strong id="resolved">—</strong></div><div class="duration"><span>Promedio de resolución</span><strong id="average">—</strong><small id="sample">Sin datos</small></div></section>
-  <p class="metric-note">Resumen por categoría y fecha de creación. La búsqueda y el filtro de estado solo afectan la bandeja. Fechas en UTC.</p>
+    <div class="section-heading metrics-heading"><h2>Resumen de atención</h2><button id="export-metrics" class="quiet" disabled>Exportar resumen CSV</button></div>
+  <section class="metrics" aria-label="Resumen de atención"><div><span>Total</span><strong id="total">—</strong></div><div><span>Abiertos</span><strong id="open">—</strong></div><div><span>En atención</span><strong id="in-progress">—</strong></div><div><span>Resueltos</span><strong id="resolved">—</strong></div><div><span>Cerrados</span><strong id="closed">—</strong></div><div class="duration"><span>Promedio de resolución</span><strong id="average">—</strong><small id="sample">Sin datos</small></div></section>
+  <p class="metric-note">Resumen por categoría y fecha de creación. Búsqueda, estado, prioridad y responsable solo afectan la bandeja. Fechas en UTC.</p>
   </div>
   <p id="notice" role="status" aria-live="polite"></p>
   <section id="workspace" class="workspace" tabindex="-1">
@@ -26,19 +27,28 @@
       <div class="section-heading"><h2>Todos los tickets</h2><button id="refresh" class="quiet">Actualizar</button></div>
       <form id="filters" class="filters">
         <label class="search">Buscar<input name="q" placeholder="Título o descripción" minlength="2" maxlength="120" type="search"></label>
-        <label>Estado<select name="status"><option value="">Todos</option><option value="open">Abiertos</option><option value="in_progress">En atención</option><option value="resolved">Resueltos</option></select></label>
+        <label>Estado<select name="status"><option value="">Todos</option><option value="open">Abiertos</option><option value="in_progress">En atención</option><option value="resolved">Resueltos</option><option value="closed">Cerrados</option></select></label>
         <label>Categoría<select name="category"><option value="">Todas</option><option value="functionality">Funcionamiento</option><option value="data">Datos</option><option value="usage">Uso de la plataforma</option></select></label>
+        <label>Prioridad<select name="priority"><option value="">Todas</option><option value="low">Baja</option><option value="normal">Normal</option><option value="high">Alta</option><option value="urgent">Urgente</option></select></label>
+        <label>Responsable<select name="assignee" id="assignee-filter"><option value="">Todos</option><option value="unassigned">Sin asignar</option></select></label>
         <label>Desde (incluido)<input type="date" name="createdFrom"></label><label>Antes de (excluido)<input type="date" name="createdBefore"></label>
         <div class="filter-actions"><button type="submit">Aplicar filtros</button><button type="button" id="clear" class="quiet">Limpiar</button></div>
       </form>
-      <div class="ticket-table-wrap"><table class="ticket-table"><caption class="sr-only">Tickets de la consulta actual</caption><thead><tr><th scope="col">Solicitud</th><th scope="col">Estado</th><th scope="col">Categoría</th><th scope="col">Creado</th></tr></thead><tbody id="tickets"><tr><td colspan="4" class="empty">Cargando solicitudes…</td></tr></tbody></table></div>
+      <div class="ticket-table-wrap"><table class="ticket-table"><caption class="sr-only">Tickets de la consulta actual</caption><thead><tr><th scope="col">Solicitud / prioridad / responsable</th><th scope="col">Estado</th><th scope="col">Categoría</th><th scope="col">Creado</th></tr></thead><tbody id="tickets"><tr><td colspan="4" class="empty">Cargando solicitudes…</td></tr></tbody></table></div>
       <div class="pager"><button id="previous" class="quiet">Anterior</button><span id="page" role="status" aria-live="polite">Página 1</span><button id="next" class="quiet">Siguiente</button></div>
     </div>
     <aside class="detail" aria-label="Detalle del ticket" hidden><div class="section-heading detail-top"><span>Detalle de la solicitud</span><button id="close-detail" class="quiet" aria-label="Cerrar detalle">Cerrar <span aria-hidden="true">×</span></button></div><div id="placeholder" class="empty detail-placeholder"><span class="placeholder-icon" aria-hidden="true">↗</span><h2>Abre una conversación</h2><p>Selecciona un ticket para revisar el problema, registrar avances o responder.</p></div>
       <article id="ticket-detail" hidden>
         <div class="section-heading"><span id="detail-status" class="badge"></span><small id="detail-category"></small></div>
         <h2 id="detail-title" tabindex="-1"></h2><p id="detail-date" class="muted"></p><p id="detail-description" class="prose"></p><details class="identifier"><summary>Identificador del ticket</summary><code id="detail-id"></code></details>
-        <section class="detail-section"><h3>Atención</h3><form id="transition"><label id="reason-label" for="reason">Motivo del cambio</label><textarea id="reason" name="reason" rows="3" required minlength="10" placeholder="Describe el avance o la solución…"></textarea><button id="transition-button" class="primary" type="submit">Iniciar atención</button></form><p id="resolved-note" hidden>Solución registrada. Puedes seguir añadiendo comentarios.</p><ol id="history" class="history"></ol></section>
+        <section class="detail-section"><h3>Clasificación y responsable</h3>
+        <p id="management-summary" class="muted"></p>
+        <form id="management-form"><label>Modificar<select id="management-kind"><option value="priority">Prioridad</option><option value="assignment">Responsable</option></select></label>
+        <label id="priority-label">Prioridad<select id="priority-value"><option value="low">Baja — consulta sin bloqueo</option><option value="normal">Normal — impacto limitado</option><option value="high">Alta — trabajo bloqueado</option><option value="urgent">Urgente — impacto general crítico</option></select></label>
+        <label id="assignee-label" hidden>Responsable<select id="assignee-value"><option value="">Sin asignar</option></select></label>
+        <label>Motivo<textarea id="management-reason" required minlength="10" rows="2"></textarea></label><button type="submit">Guardar clasificación</button></form>
+        <ol id="management-history" class="history"></ol><button id="more-management" class="quiet" hidden>Cargar más cambios</button></section>
+        <section class="detail-section"><h3>Atención</h3><form id="transition"><label id="next-status-label" hidden>Acción<select id="next-status"><option value="in_progress">Reabrir la atención</option><option value="closed">Cerrar definitivamente</option></select></label><label id="reason-label" for="reason">Motivo del cambio</label><textarea id="reason" name="reason" rows="3" required minlength="10" placeholder="Describe el avance o la solución…"></textarea><button id="transition-button" class="primary" type="submit">Iniciar atención</button></form><p id="resolved-note" hidden>Ticket cerrado definitivamente. Su historial y conversación se conservan en modo lectura.</p><ol id="history" class="history"></ol><button id="more-history" class="quiet" hidden>Cargar más estados</button></section>
         <section class="detail-section"><h3>Conversación</h3><p class="muted">Todos los mensajes usan el autor ficticio de esta demo.</p><div id="comments"></div><button id="more-comments" class="quiet" hidden>Cargar más mensajes</button>
           <form id="comment-form"><label for="comment-body">Añadir comentario</label><textarea id="comment-body" name="body" rows="3" required placeholder="Escribe una respuesta…"></textarea><button type="submit">Enviar comentario</button></form>
         </section>

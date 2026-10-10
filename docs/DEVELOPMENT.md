@@ -4,15 +4,11 @@
 
 Comandos ejecutados desde la raíz del repositorio.
 
-## Comprobaciones automáticas
+## Comprobaciones locales
 
-El workflow `.github/workflows/ci.yml` ejecuta las comprobaciones en GitHub Actions al recibir un push o pull request; también permite ejecución manual. Instala las dependencias del lockfile, compila TypeScript y ejecuta las pruebas aisladas y de integración.
+GitHub Actions está desactivado por decisión del propietario. El workflow se conserva con disparador exclusivamente manual; no se ejecuta por push ni pull request. Para volver a usarlo habría que habilitarlo expresamente en GitHub.
 
-Cada ejecución usa PostgreSQL 17 temporal con credenciales exclusivas de prueba. Aplica las migraciones desde cero y las repite para comprobar que no se vuelvan a aplicar. No usa el `.env` local, no despliega la API y solo dispone de permiso de lectura del repositorio. Las acciones están fijadas a commits concretos.
-
-El resultado aparece en la pestaña **Actions** y en los checks del pull request después de publicar el workflow. Para impedir merges cuando falle, hay que configurar aparte una regla de protección de rama que exija `Build and test`.
-
-La API incluye persistencia, seguimiento y métricas; las siguientes ampliaciones se incorporan de forma incremental.
+Ejecutar `npm test` y `npm run test:db` localmente. La segunda orden requiere PostgreSQL. La prueba de migraciones crea su propia base temporal y requiere permiso CREATEDB en el entorno de pruebas.
 
 ## Estructura inicial
 
@@ -150,14 +146,15 @@ El archivo `package-lock.json` fija las versiones instaladas. Las dependencias y
 
 ## Cambiar el estado y consultar el historial
 
-Ejecutar `npm run db:migrate` para aplicar la migración 003. El flujo permitido es `open → in_progress → resolved`. No se permiten saltos, retrocesos ni repetir un estado.
+Ejecutar `npm run db:migrate` para aplicar la migración 003. El flujo permitido es `open → in_progress → resolved`. Además, `resolved → in_progress` permite reabrir y `resolved → closed` cierra definitivamente. No se repite un estado ni se permite salir de closed.
 
-`PATCH /tickets/:id/status` recibe exactamente `expectedStatus`, `status` y `reason`. El motivo es obligatorio, de 10 a 2000 caracteres después de quitar espacios exteriores. Al resolver debe describir la solución; el sistema comprueba el formato, no que el problema haya quedado efectivamente solucionado.
+`PATCH /tickets/:id/status` recibe exactamente `expectedVersion`, `expectedStatus`, `status` y `reason`. El motivo es obligatorio, de 10 a 2000 caracteres después de quitar espacios exteriores. Al resolver debe describir la solución; el sistema comprueba el formato, no que el problema haya quedado efectivamente solucionado.
 
 ```powershell
 # Usar el identificador de un ticket abierto creado previamente.
 $ticketId = $ticket.id
 $change = @{
+  expectedVersion = $ticket.version
   expectedStatus = 'open'
   status = 'in_progress'
   reason = 'Se inicia la revisión del problema reportado.'
@@ -168,9 +165,9 @@ Invoke-RestMethod -Uri "http://127.0.0.1:3000/tickets/$ticketId/history"
 
 Respuesta: 204 sin cuerpo cuando se guarda, 400 para formato inválido, 404 si no existe y 409 para transición no permitida o estado desactualizado. Para resolver, enviar `expectedStatus: in_progress`, `status: resolved` y la explicación de la solución en `reason`.
 
-El repositorio bloquea la fila durante la transacción, verifica el estado esperado y guarda estado e historial juntos. Un fallo revierte ambos cambios. La comparación del estado es suficiente para este flujo sin retrocesos; si se añaden reaperturas deberá revisarse el control de concurrencia.
+El repositorio bloquea la fila durante la transacción, verifica el estado esperado y guarda estado e historial juntos. Un fallo revierte ambos cambios. También compara expectedVersion con la versión actual y la incrementa al modificar estado, prioridad o responsable. Un cliente desactualizado recibe 409 incluso si el estado coincide tras una reapertura.
 
-`GET /tickets/:id/history` devuelve `{ data: [...] }` con identificador del evento, estado anterior, estado nuevo, motivo y fecha UTC, del más antiguo al más reciente. Un ticket recién creado tiene historial vacío: su creación está en `createdAt`. No se inventan eventos para tickets anteriores a la migración. Por ahora hay como máximo dos transiciones por ticket.
+`GET /tickets/:id/history` devuelve `{ data: [...], pagination: { page, limit, hasNext } }` con identificador del evento, estado anterior, estado nuevo, motivo y fecha UTC, del más antiguo al más reciente. Un ticket recién creado tiene historial vacío: su creación está en `createdAt`. No se inventan eventos para tickets anteriores a la migración. Admite page (1–10000) y limit (1–100, por defecto 20) para recorrer todos los ciclos.
 
 No hay actor autenticado ni confirmación del solicitante: `resolved` significa que se registró una solución. La demo sigue siendo local y sin permisos por usuario. Las rutas no permiten editar ni eliminar el historial, pero esto no constituye un registro de auditoría inmutable ante un administrador de la base de datos.
 
@@ -178,7 +175,7 @@ No hay actor autenticado ni confirmación del solicitante: `resolved` significa 
 
 `GET /tickets?status=open&category=data&page=1&limit=20` combina filtros de estado y categoría. Ambos son opcionales y se aplican antes de paginar; `hasNext` corresponde a los resultados filtrados.
 
-- Estados: `open`, `in_progress`, `resolved`.
+- Estados: `open`, `in_progress`, `resolved`, `closed`.
 - Categorías: `functionality`, `data`, `usage`.
 - Valores vacíos, desconocidos o parámetros repetidos devuelven 400.
 - Sin coincidencias devuelve 200 con `data: []`.
@@ -221,9 +218,9 @@ La misma ruta `/metrics/tickets` añade `resolution`:
 { "averageSeconds": 120, "sampleSize": 2, "excludedCount": 0 }
 ```
 
-- `averageSeconds`: promedio aritmético de segundos transcurridos desde creación hasta la primera transición a `resolved`, entre los tickets actualmente resueltos con duración válida. Incluye noches y fines de semana; no representa horas de trabajo.
+- `averageSeconds`: promedio aritmético de segundos transcurridos desde creación hasta la última transición a `resolved`, entre los tickets actualmente resueltos o cerrados con duración válida. Incluye noches y fines de semana; no representa horas de trabajo.
 - `sampleSize`: cantidad de tickets utilizados. Sin observaciones válidas devuelve 0 y el promedio es `null`; una duración real de cero sí es válida.
-- `excludedCount`: tickets resueltos sin evento de resolución o con fecha anterior a la creación. Se excluyen del promedio pero siguen en los conteos por estado.
+- `excludedCount`: tickets resueltos o cerrados sin evento de resolución o con fecha anterior a la creación. Se excluyen del promedio pero siguen en los conteos por estado.
 - Los filtros siguen seleccionando por **fecha de creación**, aunque la solución se haya registrado fuera del periodo.
 - Los tickets abiertos o en atención no entran en el promedio. Por eso no mide el tiempo de espera de las solicitudes pendientes ni garantiza calidad del servicio.
 
@@ -237,7 +234,7 @@ Los textos de creación y motivos rechazan el carácter NUL y secuencias Unicode
 
 `GET /tickets/:id/comments?page=1&limit=20` devuelve `data` y `pagination` con `page`, `limit` y `hasNext`. Usa los mismos límites de paginación del listado de tickets y ordena del más antiguo al más reciente, con UUID como desempate. Un ticket sin mensajes devuelve una lista vacía; un ticket inexistente devuelve 404. Solo permite parámetros page y limit.
 
-Los comentarios son texto plano; la interfaz los representa como texto sin ejecutar HTML recibido. No cambian el estado, no sustituyen el motivo obligatorio al resolver y no modifican las métricas. También se aceptan en tickets resueltos: esta versión no tiene cierre definitivo. No hay adjuntos, edición, borrado ni distinción entre notas privadas y mensajes públicos.
+Los comentarios son texto plano; la interfaz los representa como texto sin ejecutar HTML recibido. No cambian el estado, no sustituyen el motivo obligatorio al resolver y no modifican las métricas. También se aceptan en tickets resueltos: los cerrados rechazan comentarios con 409. No hay adjuntos, edición, borrado ni distinción entre notas privadas y mensajes públicos.
 
 Aplicar `npm run db:migrate` para crear la tabla con la migración 004. Las pruebas verifican persistencia, paginación, separación por ticket, campos del servidor y comentarios después de resolver. La demo sigue siendo local sin permisos por usuario.
 
@@ -248,3 +245,7 @@ Aplicar `npm run db:migrate` para crear la tabla con la migración 004. Las prue
 Los caracteres `%`, `_` y `!` se buscan literalmente; no actúan como comodines. No busca en comentarios ni ofrece relevancia, corrección ortográfica o equivalencia entre letras acentuadas y no acentuadas. Conserva el orden por fecha del listado. La ruta de métricas no admite `q`.
 
 La consulta usa SQL parametrizado. La búsqueda por subcadena puede recorrer la tabla; si el volumen crece, se medirá su rendimiento antes de añadir índices especializados. No requiere migraciones nuevas.
+
+## Prioridad, responsable y cierre
+
+Consultar [reglas y ejemplos completos](TICKET-MANAGEMENT.md). La migración 005 añade versión, prioridad, responsable y el historial de gestión. La modificación de estado ahora exige expectedVersion.

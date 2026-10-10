@@ -17,11 +17,11 @@ test('estados, historial, concurrencia y rollback con PostgreSQL', async () => {
     assert.equal(response.statusCode, 201);
     id = response.json().id;
     const patch = (payload, ticketId = id) => app.inject({ method: 'PATCH', url: `/tickets/${ticketId}/status`, payload });
-    const change = { expectedStatus: 'open', status: 'in_progress', reason: 'Se inicia la revisión del problema.' };
-    assert.deepEqual((await app.inject(`/tickets/${id}/history`)).json(), { data: [] });
+    const change = { expectedVersion: 1, expectedStatus: 'open', status: 'in_progress', reason: 'Se inicia la revisión del problema.' };
+    assert.deepEqual((await app.inject(`/tickets/${id}/history`)).json().data, []);
     assert.equal((await patch(change, randomUUID())).statusCode, 404);
     assert.equal((await app.inject(`/tickets/${randomUUID()}/history`)).statusCode, 404);
-    for (const invalid of [{ ...change, reason: ' ' }, { ...change, status: 'closed' }, { ...change, actor: 'admin' }, null]) {
+    for (const invalid of [{ ...change, reason: ' ' }, { ...change, status: 'unknown' }, { ...change, actor: 'admin' }, null]) {
       assert.equal((await patch(invalid)).statusCode, 400);
     }
     assert.equal((await patch({ ...change, status: 'resolved' })).statusCode, 409);
@@ -35,9 +35,9 @@ test('estados, historial, concurrencia y rollback con PostgreSQL', async () => {
     assert.deepEqual(results.map(r => r.statusCode).sort(), [204, 409]);
     assert.equal((await repo.history(id)).length, 1);
     assert.equal((await patch({ ...change, status: 'resolved' })).statusCode, 409);
-    assert.equal((await patch({ expectedStatus: 'in_progress', status: 'resolved', reason: '' })).statusCode, 400);
+    assert.equal((await patch({ expectedVersion: 2, expectedStatus: 'in_progress', status: 'resolved', reason: '' })).statusCode, 400);
     const solution = 'Se corrigió la configuración y se verificó el resultado.';
-    assert.equal((await patch({ expectedStatus: 'in_progress', status: 'resolved', reason: solution })).statusCode, 204);
+    assert.equal((await patch({ expectedVersion: 2, expectedStatus: 'in_progress', status: 'resolved', reason: solution })).statusCode, 204);
     assert.equal((await repo.findById(id)).status, 'resolved');
     const history = (await app.inject(`/tickets/${id}/history`)).json().data;
     assert.equal(history.length, 2);
@@ -46,7 +46,7 @@ test('estados, historial, concurrencia y rollback con PostgreSQL', async () => {
     assert.equal(history[1].status, 'resolved');
     assert.equal(history[1].reason, solution);
     assert.ok(Number.isFinite(Date.parse(history[1].changedAt)));
-    assert.equal((await patch({ expectedStatus: 'resolved', status: 'open', reason: 'Intento de reapertura del ticket.' })).statusCode, 409);
+    assert.equal((await patch({ expectedVersion: 3, expectedStatus: 'resolved', status: 'open', reason: 'Intento de reapertura del ticket.' })).statusCode, 409);
     assert.equal((await repo.history(id)).length, 2);
   } finally {
     if (id) {

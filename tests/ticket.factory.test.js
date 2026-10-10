@@ -15,7 +15,7 @@ test('construye un ticket abierto con solicitante y datos del servidor', () => {
 
   assert.equal(result.success, true);
   const { id, createdAt, ...data } = result.ticket;
-  assert.deepEqual(data, { ...input, requesterId: 'usuario-ficticio-01', status: 'open' });
+  assert.deepEqual(data, { ...input, requesterId: 'usuario-ficticio-01', status: 'open', priority: 'normal', assigneeId: null, version: 1 });
   assert.match(id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
   const timestamp = Date.parse(createdAt);
   assert.ok(timestamp >= before && timestamp <= after);

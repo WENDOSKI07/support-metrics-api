@@ -8,6 +8,7 @@ export function buildTestApp() {
     async findById(id) { return tickets.get(id); },
     async list(limit, offset, filters = {}) {
       return [...tickets.values()]
+        .filter(ticket => (!filters.priority || ticket.priority === filters.priority) && (!filters.assignee || (filters.assignee === 'unassigned' ? ticket.assigneeId === null : ticket.assigneeId === filters.assignee)))
         .filter(ticket => !filters.q || ticket.title.toLowerCase().includes(filters.q.toLowerCase()) || ticket.description.toLowerCase().includes(filters.q.toLowerCase()))
         .filter(ticket => (!filters.status || ticket.status === filters.status) && (!filters.category || ticket.category === filters.category))
         .filter(ticket => (!filters.createdFrom || ticket.createdAt >= `${filters.createdFrom}T00:00:00.000Z`) &&

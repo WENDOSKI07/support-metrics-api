@@ -43,8 +43,8 @@ test('comentarios persistentes: aislamiento, paginación y ticket resuelto', asy
     assert.equal((await app.inject(`${url}?limit=101`)).statusCode, 400);
     assert.equal((await repo.findById(ids[0])).status, 'open');
     assert.deepEqual(await repo.history(ids[0]), []);
-    await repo.changeStatus(ids[0], { expectedStatus: 'open', status: 'in_progress', reason: 'Inicio de revisión de prueba.' });
-    await repo.changeStatus(ids[0], { expectedStatus: 'in_progress', status: 'resolved', reason: 'Solución de prueba documentada.' });
+    await repo.changeStatus(ids[0], { expectedVersion: 1, expectedStatus: 'open', status: 'in_progress', reason: 'Inicio de revisión de prueba.' });
+    await repo.changeStatus(ids[0], { expectedVersion: 2, expectedStatus: 'in_progress', status: 'resolved', reason: 'Solución de prueba documentada.' });
     assert.equal((await post({ body: 'Gracias por la solución.' })).statusCode, 201);
     assert.equal((await repo.findById(ids[0])).status, 'resolved');
     // Una nueva aplicación y conexiones leen los comentarios guardados.

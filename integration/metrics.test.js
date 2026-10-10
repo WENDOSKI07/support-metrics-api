@@ -16,7 +16,7 @@ test('métricas: conteos conocidos, filtros, límites UTC y conjunto vacío', as
     await client.query("SET LOCAL TIME ZONE 'America/Bogota'");
     const empty = await app.inject('/metrics/tickets');
     assert.equal(empty.statusCode, 200);
-    assert.deepEqual(empty.json().byStatus, { open: 0, in_progress: 0, resolved: 0 });
+    assert.deepEqual(empty.json().byStatus, { open: 0, in_progress: 0, resolved: 0, closed: 0 });
     assert.equal(empty.json().total, 0);
     assert.deepEqual(empty.json().resolution, { averageSeconds: null, sampleSize: 0, excludedCount: 0 });
     const fixtures = [
@@ -36,7 +36,7 @@ test('métricas: conteos conocidos, filtros, límites UTC y conjunto vacío', as
     }
     const all = (await app.inject('/metrics/tickets')).json();
     assert.equal(all.total, 5);
-    assert.deepEqual(all.byStatus, { open: 2, in_progress: 1, resolved: 2 });
+    assert.deepEqual(all.byStatus, { open: 2, in_progress: 1, resolved: 2, closed: 0 });
     assert.deepEqual(all.resolution, { averageSeconds: null, sampleSize: 0, excludedCount: 2 });
     // Dos duraciones conocidas: 60 y 180 segundos, promedio 120.
     for (const [index, seconds] of [[3, 60], [4, 180]]) {
@@ -53,12 +53,12 @@ test('métricas: conteos conocidos, filtros, límites UTC y conjunto vacío', as
     const period = 'createdFrom=2026-01-01&createdBefore=2026-02-01';
     const january = (await app.inject(`/metrics/tickets?${period}`)).json();
     assert.equal(january.total, 4);
-    assert.deepEqual(january.byStatus, { open: 2, in_progress: 1, resolved: 1 });
+    assert.deepEqual(january.byStatus, { open: 2, in_progress: 1, resolved: 1, closed: 0 });
     // Cuenta la resolución de febrero del ticket creado al terminar enero.
     assert.deepEqual(january.resolution, { averageSeconds: 60, sampleSize: 1, excludedCount: 0 });
     const data = (await app.inject(`/metrics/tickets?${period}&category=data`)).json();
     assert.equal(data.total, 3);
-    assert.deepEqual(data.byStatus, { open: 1, in_progress: 1, resolved: 1 });
+    assert.deepEqual(data.byStatus, { open: 1, in_progress: 1, resolved: 1, closed: 0 });
     assert.deepEqual(data.scope, { dateField: 'createdAt', timeZone: 'UTC', statusBasis: 'current',
       createdFrom: '2026-01-01', createdBefore: '2026-02-01', category: 'data' });
     const listed = (await app.inject(`/tickets?${period}&category=data`)).json().data;
@@ -73,6 +73,14 @@ test('métricas: conteos conocidos, filtros, límites UTC y conjunto vacío', as
       'category=data&category=usage', 'createdFrom=2026-02-01&createdBefore=2026-01-01']) {
       assert.equal((await app.inject(`/metrics/tickets?${query}`)).statusCode, 400, query);
     }
+    // Resueltos y cerrados se ponderan por número de tickets, no por grupos de estado.
+    await client.query("UPDATE tickets SET status='closed' WHERE id=$1",[ids[4]]);
+    await client.query("UPDATE ticket_history SET changed_at=$1 WHERE ticket_id=$2 AND status='resolved'",['2026-02-01T00:03:00Z',ids[4]]);
+    assert.deepEqual((await app.inject('/metrics/tickets')).json().resolution,
+      { averageSeconds:120, sampleSize:2, excludedCount:0 });
+    await client.query("UPDATE tickets SET status='in_progress' WHERE id=$1",[ids[3]]);
+    assert.deepEqual((await app.inject('/metrics/tickets')).json().resolution,
+      { averageSeconds:180, sampleSize:1, excludedCount:0 });
   } finally {
     await client.query('ROLLBACK');
     await app.close();

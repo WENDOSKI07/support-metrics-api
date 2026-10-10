@@ -16,10 +16,10 @@ $ticket = Send-DemoJson 'Post' '/tickets' @{
 $id = $ticket.id
 Send-DemoJson 'Post' "/tickets/$id/comments" @{ body = 'El problema aparece al seleccionar el reporte mensual.' }
 Send-DemoJson 'Patch' "/tickets/$id/status" @{
-    expectedStatus = 'open'; status = 'in_progress'; reason = 'Se inicia la revisión del reporte de demostración.'
+    expectedVersion = 1; expectedStatus = 'open'; status = 'in_progress'; reason = 'Se inicia la revisión del reporte de demostración.'
 }
 Send-DemoJson 'Patch' "/tickets/$id/status" @{
-    expectedStatus = 'in_progress'; status = 'resolved'; reason = 'Se corrigió la configuración y se comprobó la descarga ficticia.'
+    expectedVersion = 2; expectedStatus = 'in_progress'; status = 'resolved'; reason = 'Se corrigió la configuración y se comprobó la descarga ficticia.'
 }
 Invoke-RestMethod "$base/tickets/$id"
 Invoke-RestMethod "$base/tickets/$id/history"

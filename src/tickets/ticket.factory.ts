@@ -25,6 +25,7 @@ export function buildTicket(input: unknown, requesterId: string): BuildTicketRes
       id: randomUUID(),
       requesterId,
       status: 'open',
+      priority: 'normal', assigneeId: null, version: 1,
       createdAt: new Date().toISOString(),
     },
   };

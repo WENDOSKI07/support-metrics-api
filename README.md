@@ -2,9 +2,7 @@
   <img src="docs/assets/header.svg" alt="Support Metrics API: cada ticket tiene una historia" width="100%">
 </p>
 
-<p align="center">
-  <a href="https://github.com/WENDOSKI07/support-metrics-api/actions/workflows/ci.yml"><img src="https://github.com/WENDOSKI07/support-metrics-api/actions/workflows/ci.yml/badge.svg" alt="Estado de las pruebas en GitHub Actions"></a>
-</p>
+
 
 <p align="center">
   <a href="#qué-puedes-hacer">Funcionalidades</a> ·
@@ -36,11 +34,23 @@ Una mesa de soporte para **registrar solicitudes, conservar su conversación y m
 flowchart LR
     A[Abierto] -->|Registrar motivo| B[En atención]
     B -->|Documentar solución| C[Resuelto]
+    C -->|Reabrir con motivo| B
+    C -->|Cierre manual| D[Cerrado]
 ```
 
 Cada cambio conserva su motivo y fecha. El estado y el historial se guardan en una misma transacción; una solicitud con estado desactualizado recibe un conflicto `409`.
 
-**Alcance actual:** demo local sin autenticación ni permisos por usuario. Todas las solicitudes usan `local-demo-user`. `resolved` significa solución registrada, no confirmación del solicitante. No hay borrado, reapertura ni cierre definitivo.
+**Alcance actual:** demo local sin autenticación ni permisos por usuario. Todas las solicitudes usan `local-demo-user`. `resolved` significa solución registrada, no confirmación del solicitante. Permite reabrir tickets resueltos y cerrarlos definitivamente de forma manual. El cierre bloquea cambios y comentarios; no elimina los datos.
+
+## Gestión de la atención
+
+- **Prioridad:** baja, normal, alta o urgente; normal al crear. Todo cambio requiere motivo.
+- **Responsable:** asignar, reasignar o dejar sin asignar entre dos agentes ficticios.
+- **Reapertura:** un ticket resuelto puede volver a atención con un motivo.
+- **Cierre:** manual desde resuelto, definitivo y sin borrado. No hay cierre automático por silencio.
+- **Trazabilidad:** historial paginado de estados y clasificación; cada edición valida la versión actual para evitar sobrescrituras.
+
+[Reglas y contratos de gestión](docs/TICKET-MANAGEMENT.md). Aplicar `npm run db:migrate` al actualizar. Los tickets existentes conservan sus datos y reciben prioridad normal, responsable vacío y versión 1.
 
 ## Inicio rápido
 
@@ -82,6 +92,14 @@ Crea un ticket ficticio, añade un comentario, registra atención y resolución 
 
 </details>
 
+## Exportar métricas
+
+En el dashboard, pulsa **Exportar resumen CSV**. Descarga una fila con las métricas visibles, fecha de consulta UTC y filtros aplicados. Usa el resumen completo, no solo la página de tickets.
+
+El promedio se expresa en segundos sin redondear; una celda vacía significa que no hay muestra. Los conteos de cero se conservan. El archivo no incluye títulos, descripciones ni comentarios. Los borradores de filtros deben aplicarse antes de exportar.
+
+Para importarlo en Excel o Power BI, selecciona CSV UTF-8 con separador coma y punto decimal. Categoría y fechas vacías significan que ese filtro no se aplicó. Varias descargas son instantáneas: no se deben sumar como si fueran tickets nuevos.
+
 ## Cómo está construido
 
 ```mermaid
@@ -96,7 +114,7 @@ flowchart LR
 | API | Fastify y TypeScript; validación de entradas y contratos HTTP |
 | Persistencia | PostgreSQL, SQL parametrizado, migraciones y transacciones |
 | Entorno local | Docker Compose para PostgreSQL |
-| Verificación | Node.js Test Runner y GitHub Actions con PostgreSQL temporal |
+| Verificación | Node.js Test Runner; pruebas locales aisladas y con PostgreSQL |
 
 ```text
 public/        Dashboard y guía web
@@ -113,10 +131,10 @@ Los comentarios se muestran como texto plano. La interfaz conserva la política 
 ## Qué significan las métricas
 
 - **Conteos:** tickets creados en el periodo elegido, agrupados por su estado actual.
-- **Resolución:** tiempo entre creación y primera resolución de los tickets actualmente resueltos con duración válida; incluye noches y fines de semana.
+- **Resolución:** tiempo entre creación y última resolución de los tickets actualmente resueltos o cerrados con duración válida; incluye noches y fines de semana.
 - **Muestra:** cantidad de tickets utilizados y cantidad excluida. Sin observaciones, el promedio es `null`.
 
-Los filtros de fechas usan **UTC**. Categoría y fechas afectan el resumen; búsqueda y estado solo filtran la bandeja. Estas cifras no miden satisfacción ni disponibilidad del servicio.
+Los filtros de fechas usan **UTC**. Categoría y fechas afectan el resumen; búsqueda, estado, prioridad y responsable solo filtran la bandeja. Estas cifras no miden satisfacción ni disponibilidad del servicio.
 
 ## Comprobaciones
 
@@ -127,7 +145,9 @@ npm run test:db   # Integración con PostgreSQL iniciado y migrado
 
 Las pruebas cubren validaciones, persistencia, paginación, búsqueda, comentarios, métricas, conflictos de estado y rollback. La prueba de migraciones crea y elimina su propia base temporal; requiere permiso `CREATEDB` en el entorno de pruebas.
 
-[Ver ejecuciones de CI](https://github.com/WENDOSKI07/support-metrics-api/actions/workflows/ci.yml) · [Consultar la guía técnica](docs/DEVELOPMENT.md)
+GitHub Actions está desactivado. Las comprobaciones se ejecutan localmente.
+
+[Consultar la guía técnica](docs/DEVELOPMENT.md)
 
 ## Próximas etapas
 
