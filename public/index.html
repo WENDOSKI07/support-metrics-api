@@ -9,6 +9,7 @@
   <nav aria-label="Principal">
     <a class="nav-item active" href="#workspace" aria-current="page"><span aria-hidden="true">▤</span> Tickets</a>
     <a class="nav-item" href="#overview"><span aria-hidden="true">◷</span> Resumen de atención</a>
+    <a class="nav-item" href="#incidents">Incidentes compartidos</a>
     <a class="nav-item" href="/docs"><span aria-hidden="true">≡</span> Guía de la API</a>
   </nav>
   <div class="sidebar-footer"><span class="demo-dot" aria-hidden="true"></span><div>Espacio de demostración<small>Datos ficticios · Sin login</small></div></div>
@@ -60,12 +61,37 @@
         <label id="assignee-label" hidden>Responsable<select id="assignee-value"><option value="">Sin asignar</option></select></label>
         <label>Motivo<textarea id="management-reason" required minlength="10" rows="2"></textarea></label><button type="submit">Guardar clasificación</button></form>
         <ol id="management-history" class="history"></ol><button id="more-management" class="quiet" hidden>Cargar más cambios</button></section>
+        <section class="detail-section"><h3>Incidente compartido</h3>
+          <p id="ticket-incident-summary" class="prose"></p><button id="open-ticket-incident" class="quiet" hidden>Ver incidente y solución</button>
+          <form id="ticket-incident-form"><label>Identificador del incidente<input id="ticket-incident-id" placeholder="UUID; vacío para desvincular"></label><p class="muted">Selecciona un incidente abierto en la sección inferior y pulsa Usar en el ticket seleccionado.</p>
+          <label>Motivo del vínculo o corrección<textarea id="ticket-incident-reason" required minlength="10" rows="2"></textarea></label><button type="submit">Guardar vínculo</button></form>
+          <ol id="ticket-incident-history" class="history"></ol><button id="more-ticket-incident-history" hidden>Cargar más vínculos</button>
+        </section>
         <section class="detail-section"><h3>Atención</h3><form id="transition"><label id="next-status-label" hidden>Acción<select id="next-status"><option value="in_progress">Reabrir la atención</option><option value="closed">Cerrar definitivamente</option></select></label><label id="reason-label" for="reason">Motivo del cambio</label><textarea id="reason" name="reason" rows="3" required minlength="10" placeholder="Describe el avance o la solución…"></textarea><button id="transition-button" class="primary" type="submit">Iniciar atención</button></form><p id="resolved-note" hidden>Ticket cerrado definitivamente. Su historial y conversación se conservan en modo lectura.</p><ol id="history" class="history"></ol><button id="more-history" class="quiet" hidden>Cargar más estados</button></section>
         <section class="detail-section"><h3>Conversación</h3><p class="muted">Todos los mensajes usan el autor ficticio de esta demo.</p><div id="comments"></div><button id="more-comments" class="quiet" hidden>Cargar más mensajes</button>
           <form id="comment-form"><label for="comment-body">Añadir comentario</label><textarea id="comment-body" name="body" rows="3" required placeholder="Escribe una respuesta…"></textarea><button type="submit">Enviar comentario</button></form>
         </section>
       </article>
     </aside>
+  </section>
+  <section id="incidents" class="incident-panel" tabindex="-1" aria-labelledby="incidents-title">
+    <div class="section-heading"><h2 id="incidents-title">Incidentes compartidos</h2><button id="refresh-incidents" class="quiet">Actualizar incidentes</button></div>
+    <p class="muted">Agrupa solicitudes sobre un mismo problema. La solución común se verifica por separado en cada ticket.</p>
+    <details><summary>Crear incidente</summary><form id="incident-create">
+      <label>Título<input name="title" required minlength="5" maxlength="120"></label>
+      <label>Descripción<textarea name="description" required minlength="10" rows="3"></textarea></label>
+      <button type="submit">Registrar incidente</button>
+    </form></details>
+    <p id="incident-notice" role="status"></p>
+    <div id="incident-list"></div><div class="pager"><button id="incident-prev">Anterior</button><span id="incident-page"></span><button id="incident-next">Siguiente</button></div>
+    <article id="incident-detail" hidden>
+      <h3 id="incident-title" tabindex="-1"></h3><p id="incident-description" class="prose"></p><p id="incident-state"></p>
+      <p id="incident-solution" class="prose"></p><p>Identificador: <code id="incident-id"></code></p>
+      <button id="use-incident">Usar en el ticket seleccionado</button>
+      <form id="incident-transition"><label id="incident-reason-label" for="incident-reason">Solución aplicada</label><textarea id="incident-reason" required minlength="10" rows="3"></textarea><button type="submit" id="incident-transition-button">Resolver incidente</button></form>
+      <h4>Tickets vinculados</h4><div id="incident-tickets"></div><button id="more-incident-tickets" hidden>Cargar más tickets</button>
+      <h4>Historial del incidente</h4><ol id="incident-history" class="history"></ol><button id="more-incident-history" hidden>Cargar más eventos</button>
+    </article>
   </section>
   <footer>Support Metrics API <span>Proyecto de aprendizaje · Datos ficticios</span></footer>
 </main>

@@ -192,3 +192,13 @@ body:not(.dashboard) > header { padding: 24px; display: flex; justify-content: s
 #database-status.unavailable { color:#a3273c; }
 @media(max-width:1000px) { .operational-metrics {grid-template-columns:1fr;} }
 @media(max-width:560px) { .age-buckets {grid-template-columns:repeat(2,minmax(0,1fr));} .topbar {gap:8px; height:auto; min-height:48px; flex-wrap:wrap; padding-block:10px;} }
+
+.incident-panel { margin-top: 24px; padding: 24px; background: var(--surface, #fff); border: 1px solid #e3e5eb; border-radius: 12px; }
+.incident-panel form { max-width: 640px; display: grid; gap: 12px; margin: 16px 0; }
+.incident-panel code, #ticket-incident-history { overflow-wrap: anywhere; }
+#incident-list { display: grid; gap: 8px; margin-top: 16px; }
+#incident-list button { text-align: left; white-space: normal; overflow-wrap: anywhere; }
+#incident-detail { border-top: 1px solid #e3e5eb; padding-top: 16px; }
+#incident-tickets { display: grid; gap: 8px; }
+#incident-tickets button { text-align: left; white-space: normal; }
+@media (max-width: 600px) { .incident-panel { padding: 14px; } }

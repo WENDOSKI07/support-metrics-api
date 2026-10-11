@@ -1,3 +1,4 @@
+import { incidentRoutes } from './incidents/incident.routes.js';
 import Fastify, { type FastifyError, type FastifyServerOptions } from 'fastify';
 import { healthRoutes } from './routes/health.routes.js';
 import { infoRoutes } from './routes/info.routes.js';
@@ -12,6 +13,7 @@ export function buildApp(repository: TicketRepository, options: FastifyServerOpt
   app.register(webRoutes);
   app.register(infoRoutes);
   app.register(ticketRoutes, { repository });
+  if (repository.incidents) app.register(incidentRoutes, { incidents: repository.incidents, tickets: repository });
   app.setErrorHandler<FastifyError>((error, request, reply) => {
     const statusCode = error.statusCode ?? 500;
     if (statusCode >= 500) {

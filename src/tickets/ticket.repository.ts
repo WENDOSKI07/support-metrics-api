@@ -1,3 +1,4 @@
+import { postgresIncidentRepository, type IncidentRepository } from '../incidents/incident.repository.js';
 import { type Pool } from 'pg';
 import { randomUUID } from 'node:crypto';
 import { type CreatedTicket, type Ticket, type StatusChange, type TicketHistory, type TicketFilters, type TicketCounts, type ManagementChange, type ManagementHistory } from './ticket.types.js';
@@ -23,6 +24,7 @@ function toTicket(row: TicketRow): Ticket {
 }
 
 export interface TicketRepository {
+  incidents?: IncidentRepository;
   checkReady(): Promise<void>;
   addComment(ticketId: string, body: string): Promise<TicketComment | 'closed' | undefined>;
   comments(ticketId: string, limit: number, offset: number): Promise<TicketComment[]>;
@@ -38,15 +40,17 @@ export interface TicketRepository {
 
 export function postgresTicketRepository(pool: Pool): TicketRepository {
   return {
+    incidents: postgresIncidentRepository(pool),
     async checkReady() {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
         await client.query("SET LOCAL statement_timeout = '2s'");
         await client.query("SET LOCAL lock_timeout = '1s'");
-        await client.query(`SELECT t.id,t.priority,t.assignee_id,t.version,h.status,c.body,m.kind,s.name
+        await client.query(`SELECT t.id,t.priority,t.assignee_id,t.version,h.status,c.body,m.kind,s.name,i.solution,ih.reason,ti.ticket_id,tih.reason
           FROM tickets t CROSS JOIN ticket_history h CROSS JOIN ticket_comments c
-          CROSS JOIN ticket_management_history m CROSS JOIN schema_migrations s LIMIT 0`);
+          CROSS JOIN ticket_management_history m CROSS JOIN schema_migrations s CROSS JOIN incidents i CROSS JOIN incident_history ih
+          CROSS JOIN ticket_incidents ti CROSS JOIN ticket_incident_history tih LIMIT 0`);
         await client.query('COMMIT');
       } catch (error) { await client.query('ROLLBACK').catch(() => {}); throw error; }
       finally { client.release(); }

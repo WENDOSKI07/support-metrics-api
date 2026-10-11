@@ -8,6 +8,7 @@ Notas preparadas para la primera versión del proyecto. La etiqueta y la publica
 - Registrar comentarios e historial de cambios, con prioridad y asignación a agentes ficticios.
 - Iniciar atención, resolver, reabrir y cerrar tickets; el cierre impide modificaciones posteriores.
 - Detectar ediciones simultáneas mediante versiones y conservar cambios e historial en transacciones.
+- Agrupar tickets en incidentes compartidos, conservar vínculos auditados y registrar soluciones comunes sin cambiar los estados individuales.
 - Consultar métricas de resolución, antigüedad de pendientes y primera atención, y exportarlas a CSV.
 - Comprobar disponibilidad de PostgreSQL con `/ready`, separado de la salud del proceso en `/health`.
 - Crear respaldos locales y verificar su restauración en una base temporal independiente.
@@ -22,7 +23,7 @@ Sigue el [inicio rápido del README](../README.md) para configurar el entorno, i
 
 ## Validación de esta entrega
 
-- 34 pruebas aisladas y 13 casos de integración aprobados durante la implementación.
+- 34 pruebas aisladas y 14 casos de integración aprobados durante la implementación.
 - Flujo de creación, asignación, atención, resolución, reapertura y cierre comprobado en navegador.
 - Interfaz comprobada en móvil y escritorio; exportación CSV y recuperación ante un fallo de disponibilidad verificadas.
 - Respaldo real restaurado y comparado con su manifiesto; archivo corrupto rechazado antes de restaurar.
@@ -35,4 +36,4 @@ Es una demo de aprendizaje para uso local. No incluye autenticación ni permisos
 
 Los respaldos son manuales, locales y sin cifrado; su almacenamiento externo y programación quedan pendientes. Las métricas usan tiempo natural, no horarios laborales ni acuerdos de nivel de servicio. No hay cierre automático por falta de respuesta.
 
-La identidad de usuarios, los incidentes compartidos y la integración con Power BI quedan para próximas etapas.
+La identidad de usuarios y la integración con Power BI quedan para próximas etapas.

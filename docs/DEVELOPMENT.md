@@ -253,3 +253,7 @@ Consultar [reglas y ejemplos completos](TICKET-MANAGEMENT.md). La migración 005
 ## Disponibilidad, respaldos y analítica operativa
 
 Consultar [la guía de confiabilidad y analítica](RELIABILITY-ANALYTICS.md) para /ready, copias locales, restauración de prueba y los campos pendingAge y firstAttention.
+
+## Incidentes compartidos
+
+Consultar [reglas, contratos y ejemplos](INCIDENTS.md). Migraciones 006 y 007; las rutas previas de tickets conservan su contrato. Cambiar un vínculo incrementa la versión del ticket.

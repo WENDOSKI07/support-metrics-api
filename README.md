@@ -159,12 +159,16 @@ GitHub Actions está desactivado. Las comprobaciones se ejecutan localmente.
 
 [Consultar la guía técnica](docs/DEVELOPMENT.md)
 
+## Incidentes compartidos
+
+Agrupa solicitudes de un mismo problema, registra una solución común y conserva el ciclo de atención de cada ticket. Disponible desde la navegación lateral. [Reglas y API](docs/INCIDENTS.md).
+
 ## Próximas etapas
 
 [Notas preparadas para v0.1.0](docs/RELEASE-v0.1.0.md): funcionalidades, validaciones y límites de la demo.
 
 - Identidad y permisos por usuario.
-- Vinculación de tickets a incidentes compartidos.
+
 - Análisis de problemas recurrentes y exploración con Power BI.
 
 Estas capacidades están pendientes. El proyecto avanza por etapas con reglas y pruebas antes de ampliar el alcance.
