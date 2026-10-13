@@ -163,6 +163,10 @@ GitHub Actions está desactivado. Las comprobaciones se ejecutan localmente.
 
 Agrupa solicitudes de un mismo problema, registra una solución común y conserva el ciclo de atención de cada ticket. Disponible desde la navegación lateral. [Reglas y API](docs/INCIDENTS.md).
 
+## Analítica con Power BI
+
+`npm run analytics:export` genera una instantánea CSV por ticket para estudiar carga, tiempos e incidentes. [Guía de importación, medidas y límites](docs/POWER-BI.md).
+
 ## Próximas etapas
 
 [Notas preparadas para v0.1.0](docs/RELEASE-v0.1.0.md): funcionalidades, validaciones y límites de la demo.

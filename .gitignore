@@ -28,3 +28,8 @@ Thumbs.db
 
 # Copias de seguridad locales (datos del proyecto)
 /backups/
+
+# Exportaciones y reportes locales con datos
+/exports/
+*.pbix
+*.pbit
