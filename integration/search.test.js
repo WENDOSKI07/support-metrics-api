@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { test } from 'node:test';
 import pg from 'pg';
-import { buildApp } from '../dist/app.js';
+import { buildApp } from '../tests/helpers/business-app.js';
 import { postgresTicketRepository } from '../dist/tickets/ticket.repository.js';
 
 test('búsqueda SQL literal por título y descripción con filtros y paginación', async () => {

@@ -40,7 +40,7 @@ flowchart LR
 
 Cada cambio conserva su motivo y fecha. El estado y el historial se guardan en una misma transacción; una solicitud con estado desactualizado recibe un conflicto `409`.
 
-**Alcance actual:** demo local sin autenticación ni permisos por usuario. Todas las solicitudes usan `local-demo-user`. `resolved` significa solución registrada, no confirmación del solicitante. Permite reabrir tickets resueltos y cerrarlos definitivamente de forma manual. El cierre bloquea cambios y comentarios; no elimina los datos.
+**Alcance actual:** aplicación local con login y roles de solicitante y soporte. Cada solicitante solo consulta y comenta sus propios tickets; soporte gestiona la atención. Los tickets antiguos de `local-demo-user` permanecen visibles para soporte. `resolved` significa solución registrada, no confirmación del solicitante. Permite reabrir tickets resueltos y cerrarlos definitivamente de forma manual. El cierre bloquea cambios y comentarios; no elimina los datos.
 
 ## Gestión de la atención
 
@@ -68,6 +68,7 @@ Copia `.env.example` a `.env` y define una contraseña local en `PGPASSWORD`. Si
 npm run db:up
 npm run db:migrate
 npm run db:seed
+npm run auth:create -- oscar support
 npm run dev
 ```
 
@@ -77,12 +78,14 @@ npm run dev
 | [localhost:3000/docs](http://127.0.0.1:3000/docs) | Guía de rutas y ejemplos |
 | [localhost:3000/health](http://127.0.0.1:3000/health) | Comprobación de respuesta de la API |
 
+El comando `auth:create` pide la contraseña de forma oculta (mínimo 15 caracteres). No existen cuentas ni contraseñas predeterminadas. Para un solicitante: `npm run auth:create -- solicitante requester`. Abre siempre el origen definido en `APP_ORIGIN` (por defecto `http://127.0.0.1:3000`). [Permisos y seguridad del login](docs/AUTHENTICATION.md).
+
 La carga de ejemplo añade tres tickets ficticios. Puedes repetirla sin duplicarlos ni sobrescribir tus cambios. PostgreSQL conserva los datos en un volumen de Docker.
 
 <details>
 <summary><strong>Probar un recorrido completo desde PowerShell</strong></summary>
 
-Con la API iniciada, ejecuta en otra terminal:
+Con la API iniciada y un usuario de soporte creado, ejecuta en otra terminal (solicita credenciales sin guardarlas):
 
 ```powershell
 ./docs/demo.ps1

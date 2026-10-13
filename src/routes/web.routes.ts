@@ -6,15 +6,17 @@ export async function webRoutes(app: FastifyInstance) {
   // Lista cerrada: la URL nunca se convierte en una ruta de archivos arbitraria.
   const files = [
     ['/', 'index.html', 'text/html; charset=utf-8'],
+    ['/login', 'login.html', 'text/html; charset=utf-8'],
+    ['/login.js', 'login.js', 'text/javascript; charset=utf-8'],
     ['/app.js', 'app.js', 'text/javascript; charset=utf-8'],
     ['/style.css', 'style.css', 'text/css; charset=utf-8'],
     ['/docs', 'docs.html', 'text/html; charset=utf-8'],
   ];
   for (const [url, file, type] of files) {
     app.get(url, async (_request, reply) => {
-      reply.header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
+      reply.header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
       reply.header('X-Content-Type-Options', 'nosniff');
-      reply.header('Cache-Control', 'no-cache');
+      reply.header('Cache-Control', 'no-store');
       return reply.type(type).send(await readFile(new URL(`../../public/${file}`, import.meta.url), 'utf8'));
     });
   }

@@ -1,4 +1,4 @@
-import { buildApp } from '../../dist/app.js';
+import { buildApp } from './business-app.js';
 
 // Solo las pruebas aisladas usan memoria; el servidor exige PostgreSQL.
 export function buildTestApp() {

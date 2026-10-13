@@ -205,7 +205,7 @@ Ejemplo: `GET /metrics/tickets?createdFrom=2026-10-01&createdBefore=2026-11-01&c
 
 La consulta SQL agrupa tickets y toma una sola fecha de resolución por ticket del historial, sin paginar. Así cada ticket se cuenta una vez y los grupos se calculan en una misma consulta. No admite `page`, `limit` ni `status`; esos parámetros devuelven 400. La suma de los estados equivale al total.
 
-**Límites:** no reconstruye el estado de los tickets al final de un periodo pasado; los conteos pueden cambiar si se atienden después. No mide incidentes únicos, disponibilidad ni satisfacción. Resuelto significa solución registrada, no confirmada por el solicitante. Esta demo usa datos ficticios y permanece sin autenticación.
+**Límites:** no reconstruye el estado de los tickets al final de un periodo pasado; los conteos pueden cambiar si se atienden después. No mide incidentes únicos, disponibilidad ni satisfacción. Resuelto significa solución registrada, no confirmada por el solicitante. Esta demo usa datos ficticios. El dashboard y las rutas privadas requieren sesión; consulta AUTHENTICATION.md para los roles y límites.
 
 **Validación:** integration/metrics.test.js contrasta cinco registros conocidos con los conteos esperados, el listado y la suma de estados. Comprueba filtros combinados, días UTC con PostgreSQL en zona Bogotá, conjunto vacío y parámetros inválidos. Sus datos se aíslan en una tabla temporal y se descartan al terminar.
 

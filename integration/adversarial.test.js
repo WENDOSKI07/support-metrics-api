@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import pg from 'pg';
-import { buildApp } from '../dist/app.js';
+import { buildApp } from '../tests/helpers/business-app.js';
 import { postgresTicketRepository } from '../dist/tickets/ticket.repository.js';
 
 test('texto incompatible con PostgreSQL se rechaza sin guardar ni alterar contenido', async t => {

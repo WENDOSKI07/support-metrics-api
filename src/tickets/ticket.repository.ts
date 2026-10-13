@@ -26,7 +26,7 @@ function toTicket(row: TicketRow): Ticket {
 export interface TicketRepository {
   incidents?: IncidentRepository;
   checkReady(): Promise<void>;
-  addComment(ticketId: string, body: string): Promise<TicketComment | 'closed' | undefined>;
+  addComment(ticketId: string, body: string, authorId?: string): Promise<TicketComment | 'closed' | undefined>;
   comments(ticketId: string, limit: number, offset: number): Promise<TicketComment[]>;
   counts(filters: Omit<TicketFilters, 'status' | 'q' | 'priority' | 'assignee'>): Promise<TicketCounts>;
   save(ticket: CreatedTicket): Promise<void>;
@@ -55,7 +55,7 @@ export function postgresTicketRepository(pool: Pool): TicketRepository {
       } catch (error) { await client.query('ROLLBACK').catch(() => {}); throw error; }
       finally { client.release(); }
     },
-    async addComment(ticketId, body) {
+    async addComment(ticketId, body, authorId = 'local-demo-user') {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
@@ -64,9 +64,9 @@ export function postgresTicketRepository(pool: Pool): TicketRepository {
           await client.query('ROLLBACK'); return ticket ? 'closed' : undefined;
         }
         const result = await client.query<CommentRow>(
-          `INSERT INTO ticket_comments(id,ticket_id,author_id,body) VALUES ($1,$2,'local-demo-user',$3)
+          `INSERT INTO ticket_comments(id,ticket_id,author_id,body) VALUES ($1,$2,$4,$3)
            RETURNING id,ticket_id AS "ticketId",author_id AS "authorId",body,created_at AS "createdAt"`,
-          [randomUUID(),ticketId,body]);
+          [randomUUID(),ticketId,body,authorId]);
         await client.query('COMMIT');
         const row = result.rows[0]!;
         return { ...row, createdAt: row.createdAt.toISOString() };
@@ -207,10 +207,11 @@ export function postgresTicketRepository(pool: Pool): TicketRepository {
            AND ($7::text IS NULL OR title ILIKE $7 ESCAPE '!' OR description ILIKE $7 ESCAPE '!')
            AND ($8::text IS NULL OR priority = $8)
            AND ($9::text IS NULL OR ($9 = 'unassigned' AND assignee_id IS NULL) OR assignee_id = $9)
+         AND ($10::text IS NULL OR requester_id=$10)
          ORDER BY created_at DESC, id DESC LIMIT $1 OFFSET $2`,
         [limit, offset, filters.status ?? null, filters.category ?? null,
           filters.createdFrom ? `${filters.createdFrom}T00:00:00.000Z` : null,
-          filters.createdBefore ? `${filters.createdBefore}T00:00:00.000Z` : null, pattern, filters.priority ?? null, filters.assignee ?? null],
+          filters.createdBefore ? `${filters.createdBefore}T00:00:00.000Z` : null, pattern, filters.priority ?? null, filters.assignee ?? null, filters.requesterId ?? null],
       );
       return result.rows.map(toTicket);
     },

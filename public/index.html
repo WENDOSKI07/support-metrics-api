@@ -1,23 +1,23 @@
 <!doctype html>
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Support Metrics · Mesa de soporte</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
-<body class="dashboard">
+<body class="dashboard auth-loading">
 <a class="skip" href="#workspace">Ir a los tickets</a>
 <aside class="sidebar" aria-label="Espacio de trabajo">
   <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">S</span>Support Metrics</a>
   <p class="workspace-label">Espacio de soporte</p>
   <nav aria-label="Principal">
     <a class="nav-item active" href="#workspace" aria-current="page"><span aria-hidden="true">▤</span> Tickets</a>
-    <a class="nav-item" href="#overview"><span aria-hidden="true">◷</span> Resumen de atención</a>
-    <a class="nav-item" href="#incidents"><span aria-hidden="true">◈</span> Incidentes compartidos</a>
-    <a class="nav-item" href="/docs"><span aria-hidden="true">≡</span> Guía de la API</a>
+    <a class="nav-item" data-support-only href="#overview"><span aria-hidden="true">◷</span> Resumen de atención</a>
+    <a class="nav-item" data-support-only href="#incidents"><span aria-hidden="true">◈</span> Incidentes compartidos</a>
+    <a class="nav-item" data-support-only href="/docs"><span aria-hidden="true">≡</span> Guía de la API</a>
   </nav>
-  <div class="sidebar-footer"><span class="demo-dot" aria-hidden="true"></span><div>Espacio de demostración<small>Datos ficticios · Sin login</small></div></div>
+  <div class="sidebar-footer"><span class="demo-dot" aria-hidden="true"></span><div><strong id="session-name">Conectando…</strong><small id="session-role"></small><button id="logout" class="quiet" type="button">Cerrar sesión</button></div></div>
 </aside>
 <main class="main-content">
   <header class="topbar"><span>Mesa de soporte <span class="breadcrumb" aria-hidden="true">/</span> <strong>Tickets</strong></span><span id="database-status" class="local-label" role="status">Comprobando PostgreSQL…</span></header>
   <section class="intro"><div><h1>Tickets</h1><p>Organiza las solicitudes y da seguimiento a cada solución.</p></div><button id="new-ticket" class="primary"><span aria-hidden="true">＋</span> Crear ticket</button></section>
-  <div id="overview" tabindex="-1">
+  <div data-support-only id="overview" tabindex="-1">
     <div class="section-heading metrics-heading"><h2>Resumen de atención</h2><button id="export-metrics" class="quiet" disabled>Exportar resumen CSV</button></div>
   <section class="metrics" aria-label="Resumen de atención"><div><span>Total</span><strong id="total">—</strong></div><div><span>Abiertos</span><strong id="open">—</strong></div><div><span>En atención</span><strong id="in-progress">—</strong></div><div><span>Resueltos</span><strong id="resolved">—</strong></div><div><span>Cerrados</span><strong id="closed">—</strong></div><div class="duration"><span>Promedio de resolución</span><strong id="average">—</strong><small id="sample">Sin datos</small></div></section>
   <section class="operational-metrics" aria-label="Antigüedad e inicio de atención">
@@ -68,13 +68,13 @@
           <ol id="ticket-incident-history" class="history"></ol><button id="more-ticket-incident-history" hidden>Cargar más vínculos</button>
         </section>
         <section class="detail-section"><h3>Atención</h3><form id="transition"><label id="next-status-label" hidden>Acción<select id="next-status"><option value="in_progress">Reabrir la atención</option><option value="closed">Cerrar definitivamente</option></select></label><label id="reason-label" for="reason">Motivo del cambio</label><textarea id="reason" name="reason" rows="3" required minlength="10" placeholder="Describe el avance o la solución…"></textarea><button id="transition-button" class="primary" type="submit">Iniciar atención</button></form><p id="resolved-note" hidden>Ticket cerrado definitivamente. Su historial y conversación se conservan en modo lectura.</p><ol id="history" class="history"></ol><button id="more-history" class="quiet" hidden>Cargar más estados</button></section>
-        <section class="detail-section"><h3>Conversación</h3><p class="muted">Todos los mensajes usan el autor ficticio de esta demo.</p><div id="comments"></div><button id="more-comments" class="quiet" hidden>Cargar más mensajes</button>
+        <section class="detail-section"><h3>Conversación</h3><p class="muted">Los mensajes se registran con la identidad de quien los envía.</p><div id="comments"></div><button id="more-comments" class="quiet" hidden>Cargar más mensajes</button>
           <form id="comment-form"><label for="comment-body">Añadir comentario</label><textarea id="comment-body" name="body" rows="3" required placeholder="Escribe una respuesta…"></textarea><button type="submit">Enviar comentario</button></form>
         </section>
       </article>
     </aside>
   </section>
-  <section id="incidents" class="incident-panel" tabindex="-1" aria-labelledby="incidents-title">
+  <section data-support-only id="incidents" class="incident-panel" tabindex="-1" aria-labelledby="incidents-title">
     <div class="section-heading"><div><h2 id="incidents-title">Incidentes compartidos</h2><p class="section-subtitle">Un problema común. Seguimiento para cada solicitud.</p></div><button id="refresh-incidents" class="quiet">Actualizar incidentes</button></div>
 
     <details class="incident-create-panel"><summary>＋ Crear incidente</summary><form id="incident-create">

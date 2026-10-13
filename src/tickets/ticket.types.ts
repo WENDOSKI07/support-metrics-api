@@ -13,6 +13,8 @@ export interface CreateTicketInput {
 export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
 
 export interface TicketFilters {
+  /** Internal authorization scope; never accepted from query parameters. */
+  requesterId?: string;
   priority?: TicketPriority;
   assignee?: string;
   q?: string;

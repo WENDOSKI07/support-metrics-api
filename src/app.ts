@@ -1,3 +1,5 @@
+import { configureAuth } from './auth/auth.js';
+import type { AuthStore } from './auth/auth.repository.js';
 import { incidentRoutes } from './incidents/incident.routes.js';
 import Fastify, { type FastifyError, type FastifyServerOptions } from 'fastify';
 import { healthRoutes } from './routes/health.routes.js';
@@ -6,8 +8,9 @@ import { ticketRoutes } from './tickets/ticket.routes.js';
 import { type TicketRepository } from './tickets/ticket.repository.js';
 import { webRoutes } from './routes/web.routes.js';
 
-export function buildApp(repository: TicketRepository, options: FastifyServerOptions = {}) {
-  const app = Fastify(options);
+export function buildApp(repository: TicketRepository, options: FastifyServerOptions = {}, auth?: AuthStore, origin?: string) {
+  const app = Fastify({ bodyLimit: 32768, ...options });
+  configureAuth(app, repository, auth, origin);
 
   app.register(healthRoutes, { checkReady: () => repository.checkReady() });
   app.register(webRoutes);

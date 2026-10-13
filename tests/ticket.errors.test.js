@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildApp } from '../dist/app.js';
+import { buildApp } from './helpers/business-app.js';
 
 test('un fallo al guardar no devuelve 201 ni expone detalles internos', async (t) => {
   const app = buildApp({

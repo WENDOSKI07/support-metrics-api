@@ -1,3 +1,5 @@
+let sessionUser = null;
+const isSupport = () => sessionUser?.role === 'support';
 const $ = id => document.getElementById(id);
 const statuses = { open: 'Abierto', in_progress: 'En atención', resolved: 'Resuelto', closed: 'Cerrado' };
 const priorityNames = { low: 'Baja', normal: 'Normal', high: 'Alta', urgent: 'Urgente' };
@@ -27,9 +29,10 @@ function notice(message, error = false) {
 }
 
 async function api(path, method = 'GET', body) {
-  const response = await fetch(path, { method, headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
+  const response = await fetch(path, { method, credentials: 'same-origin', headers: { 'X-Requested-With': 'support-metrics', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
     body: body === undefined ? undefined : JSON.stringify(body) });
   const data = response.status === 204 ? null : await response.json();
+  if (response.status === 401) { document.body.classList.add('auth-loading'); location.replace('/login'); }
   if (!response.ok) {
     const error = new Error(typeof data.error === 'string' ? data.error : data.error?.message || 'No se pudo completar la solicitud.');
     error.status = response.status;
@@ -127,7 +130,7 @@ async function loadMetrics() {
 }
 
 async function refresh() {
-  await Promise.all([loadList(), loadMetrics(), loadReadiness()]);
+  await Promise.all([loadList(), ...(isSupport() ? [loadMetrics(), loadReadiness()] : [])]);
 }
 
 $('export-metrics').addEventListener('click', () => {
@@ -164,7 +167,7 @@ $('export-metrics').addEventListener('click', () => {
 function renderComments(comments) {
   for (const comment of comments) {
     const item = element('div', undefined, 'comment');
-    item.append(element('small', `Usuario demo · ${date(comment.createdAt)}`), element('p', comment.body));
+    item.append(element('small', `${comment.authorId === sessionUser?.id ? 'Tú' : 'Participante'} · ${date(comment.createdAt)}`), element('p', comment.body));
     $('comments').append(item);
   }
 }
@@ -182,7 +185,7 @@ async function selectTicket(id, focus = true) {
     row.closest('tr').classList.toggle('selected', row.dataset.id === id);
   }
   try {
-    const [ticket, history, comments, management, linked, linkHistory] = await Promise.all([api(`/tickets/${id}`), api(`/tickets/${id}/history`), api(`/tickets/${id}/comments?limit=20`), api(`/tickets/${id}/management-history`), api(`/tickets/${id}/incident`), api(`/tickets/${id}/incident-history`)]);
+    const [ticket, history, comments, management, linked, linkHistory] = await Promise.all([api(`/tickets/${id}`), api(`/tickets/${id}/history`), api(`/tickets/${id}/comments?limit=20`), api(`/tickets/${id}/management-history`), isSupport() ? api(`/tickets/${id}/incident`) : { incident: null }, isSupport() ? api(`/tickets/${id}/incident-history`) : { data: [], pagination: { hasNext: false } }]);
     if (version !== detailVersion) return;
     renderTicketIncident(linked.incident, linkHistory, ticket);
     current = ticket; commentPage = 1; historyPage = 1; managementPage = 1;
@@ -191,8 +194,8 @@ async function selectTicket(id, focus = true) {
     $('detail-date').textContent = `Creado el ${date(ticket.createdAt)}`;
     $('detail-status').textContent = statuses[ticket.status]; $('detail-status').className = `badge ${ticket.status}`;
     const closed = ticket.status === 'closed';
-    $('transition').hidden = closed; $('resolved-note').hidden = !closed;
-    $('comment-form').hidden = closed; $('management-form').hidden = closed;
+    $('transition').hidden = closed || !isSupport(); $('resolved-note').hidden = !closed;
+    $('comment-form').hidden = closed; $('management-form').hidden = closed || !isSupport();
     $('management-summary').textContent = `Prioridad ${priorityNames[ticket.priority]} · ${agentName(ticket.assigneeId)} · Versión ${ticket.version}`;
     $('priority-value').value = ticket.priority; $('assignee-value').value = ticket.assigneeId || '';
     $('next-status-label').hidden = ticket.status !== 'resolved';
@@ -282,7 +285,7 @@ $('more-comments').addEventListener('click', async () => {
   } catch (error) { notice(error.message, true); }
   finally { $('more-comments').disabled = false; }
 });
-loadAgents().finally(refresh);
+
 
 function updateNavigation() {
   const target = ['#overview','#incidents'].includes(location.hash) ? location.hash : '#workspace';
@@ -485,7 +488,6 @@ $('more-ticket-incident-history').addEventListener('click',async()=> {
     ticketIncidentPage++;renderLinkHistory(result.data);button.hidden=!result.pagination.hasNext;
   }catch(error){notice(error.message,true);}finally{button.disabled=false;}
 });
-loadIncidents();
 
 $('incident-filters').addEventListener('submit',event=> {
   event.preventDefault(); incidentFilters=new URLSearchParams();
@@ -528,3 +530,37 @@ $('incident-picker').addEventListener('close',()=> {pickerVersion++;});
 $('picker-search').addEventListener('submit',event=> {event.preventDefault();pickerQuery=$('picker-query').value.trim();pickerPage=1;loadPicker();});
 $('picker-prev').addEventListener('click',()=> {if(pickerPage>1){pickerPage--;loadPicker();}});
 $('picker-next').addEventListener('click',()=> {pickerPage++;loadPicker();});
+
+async function initializeSession() {
+  try {
+    sessionUser = (await api('/auth/me')).user;
+    $('session-name').textContent = sessionUser.username;
+    $('session-role').textContent = isSupport() ? 'Agente de soporte' : 'Solicitante';
+    for (const node of document.querySelectorAll('[data-support-only]')) node.hidden = !isSupport();
+    $('ticket-incident-form').closest('section').hidden = !isSupport();
+    if (!isSupport()) {
+      $('database-status').textContent = 'Tu espacio personal';
+      document.querySelector('.intro h1').textContent = 'Mis tickets';
+      document.querySelector('#workspace .section-heading h2').textContent = 'Mis solicitudes';
+      $('assignee-filter').closest('label').hidden = true;
+      if (['#incidents','#overview'].includes(location.hash)) location.hash = 'workspace';
+    }
+    document.body.classList.remove('auth-loading');
+    if (isSupport()) await loadAgents();
+    await refresh();
+    if (isSupport()) await loadIncidents();
+  } catch (error) {
+    if (error.status !== 401) {
+      document.body.classList.remove('auth-loading');
+      notice('No se pudo verificar la sesión. Recarga para reintentar.', true);
+    }
+  }
+}
+$('logout').addEventListener('click', async () => {
+  $('logout').disabled = true;
+  try { await api('/auth/logout', 'POST'); drafts.clear(); location.replace('/login'); }
+  catch (error) { notice(error.message, true); $('logout').disabled = false; }
+});
+// Revalidate when restoring a cached tab after logging out elsewhere.
+window.addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
+initializeSession();

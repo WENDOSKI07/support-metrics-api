@@ -10,13 +10,12 @@ const isTicketId = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 
 export async function ticketRoutes(app: FastifyInstance, options: { repository: TicketRepository }) {
   const tickets = options.repository;
-  const demoRequesterId = 'local-demo-user';
 
   app.post<{ Params: { id: string } }>('/tickets/:id/comments', async (request, reply) => {
     if (!isTicketId(request.params.id)) return reply.code(404).send({ error: 'Ticket no encontrado.' });
     const body = validateComment(request.body);
     if (body === undefined) return reply.code(400).send({ error: 'Enviar solo body: texto válido de 1 a 5000 caracteres.' });
-    const comment = await tickets.addComment(request.params.id, body);
+    const comment = await tickets.addComment(request.params.id, body, request.identity!.id);
     if (comment === 'closed') return reply.code(409).send({ error: 'El ticket está cerrado y no admite comentarios.' });
     if (!comment) return reply.code(404).send({ error: 'Ticket no encontrado.' });
     return reply.code(201).send(comment);
@@ -95,13 +94,14 @@ export async function ticketRoutes(app: FastifyInstance, options: { repository: 
     const result = validateListQuery(request.query);
     if (!result.success) return reply.code(400).send({ error: result.error });
     const { page, limit, filters } = result;
+    if (request.identity!.role === 'requester') filters.requesterId = request.identity!.id;
     // Un registro adicional permite saber si hay otra página sin contar toda la tabla.
     const rows = await tickets.list(limit + 1, (page - 1) * limit, filters);
     return { data: rows.slice(0, limit), pagination: { page, limit, hasNext: rows.length > limit } };
   });
 
   app.post('/tickets', async (request, reply) => {
-    const result = buildTicket(request.body, demoRequesterId);
+    const result = buildTicket(request.body, request.identity!.id);
     if (!result.success) {
       return reply.code(400).send({ error: result.error });
     }

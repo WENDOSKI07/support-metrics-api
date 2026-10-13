@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildApp } from '../dist/app.js';
+import { buildApp } from './helpers/business-app.js';
 
 test('readiness devuelve 200; un fallo de dependencia devuelve 503 sin detalles internos',async t=>{
   let failing=false;

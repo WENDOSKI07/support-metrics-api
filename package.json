@@ -18,7 +18,8 @@
     "db:seed": "node --env-file=.env scripts/seed-demo.mjs",
     "db:backup": "node --env-file=.env scripts/db-backup.mjs",
     "db:verify-backup": "node --env-file=.env scripts/db-verify-backup.mjs",
-    "analytics:export": "node --env-file=.env scripts/export-analytics.mjs"
+    "analytics:export": "node --env-file=.env scripts/export-analytics.mjs",
+    "auth:create": "npm run build && node --env-file=.env scripts/create-user.mjs"
   },
   "dependencies": {
     "fastify": "^5.12.5",
