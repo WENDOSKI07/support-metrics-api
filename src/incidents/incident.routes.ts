@@ -20,15 +20,22 @@ export async function incidentRoutes(app: FastifyInstance, options: { incidents:
     const result=uuid(request.params.id)?await incidents.find(request.params.id):undefined;
     return result ?? reply.code(404).send({error:'Incidente no encontrado.'});
   });
+  app.get<{Params:Params;Querystring:Record<string,unknown>}>('/incidents/:id/summary',async(request,reply)=> {
+    if (Object.keys(request.query).length) return reply.code(400).send({error:'Este resumen no admite parámetros.'});
+    if (!uuid(request.params.id) || !await incidents.find(request.params.id)) return reply.code(404).send({error:'Incidente no encontrado.'});
+    reply.header('Cache-Control','no-store');
+    return incidents.summary(request.params.id);
+  });
   for (const path of ['/incidents','/incidents/:id/tickets','/incidents/:id/history','/tickets/:id/incident-history']) {
     app.get<{Params:Params;Querystring:Record<string,unknown>}>(path, async(request,reply)=> {
-      if (Object.keys(request.query).some(k=>!['page','limit'].includes(k))) return reply.code(400).send({error:'Solo se permiten page y limit.'});
+      if (Object.keys(request.query).some(k=>!(path === '/incidents' ? ['page','limit','q','status'] : ['page','limit']).includes(k))) return reply.code(400).send({error:'Solo se permiten page y limit.'});
+      if (path === '/incidents' && request.query.status !== undefined && !['open','resolved'].includes(request.query.status as string)) return reply.code(400).send({error:'Estado de incidente inválido.'});
       const query=validateListQuery(request.query);
       if (!query.success) return reply.code(400).send({error:query.error});
       const id=request.params.id;
       if (path!=='/incidents' && (!uuid(id) || !(path.startsWith('/tickets')?await tickets.findById(id):await incidents.find(id)))) return reply.code(404).send({error:'Registro no encontrado.'});
       const {page,limit}=query, offset=(page-1)*limit;
-      const rows=path==='/incidents'?await incidents.list(limit+1,offset):path.endsWith('/tickets')?await incidents.tickets(id,limit+1,offset):path.startsWith('/tickets')?await incidents.ticketHistory(id,limit+1,offset):await incidents.history(id,limit+1,offset);
+      const rows=path==='/incidents'?await incidents.list(limit+1,offset,{q:query.filters.q,status:query.filters.status as 'open'|'resolved'|undefined}):path.endsWith('/tickets')?await incidents.tickets(id,limit+1,offset):path.startsWith('/tickets')?await incidents.ticketHistory(id,limit+1,offset):await incidents.history(id,limit+1,offset);
       return {data:rows.slice(0,limit),pagination:{page,limit,hasNext:rows.length>limit}};
     });
   }

@@ -15,7 +15,26 @@ export function postgresIncidentRepository(pool: Pool) {
       return (await pool.query<Incident>(`INSERT INTO incidents(id,title,description) VALUES($1,$2,$3) RETURNING ${columns}`, [randomUUID(),title,description])).rows[0]!;
     },
     async find(id: string) { return (await pool.query<Incident>(`SELECT ${columns} FROM incidents WHERE id=$1`,[id])).rows[0]; },
-    async list(limit: number, offset: number) { return (await pool.query<Incident>(`SELECT ${columns} FROM incidents ORDER BY created_at DESC,id DESC LIMIT $1 OFFSET $2`,[limit,offset])).rows; },
+    async list(limit: number, offset: number, filters: { q?: string | undefined; status?: 'open' | 'resolved' | undefined } = {}) {
+      const search = filters.q ? '%' + filters.q.replace(/[!%_]/g, value => '!' + value) + '%' : null;
+      return (await pool.query<Incident>(`SELECT ${columns} FROM incidents
+        WHERE ($3::text IS NULL OR status=$3)
+          AND ($4::text IS NULL OR title ILIKE $4 ESCAPE '!' OR description ILIKE $4 ESCAPE '!')
+        ORDER BY created_at DESC,id DESC LIMIT $1 OFFSET $2`,[limit,offset,filters.status ?? null,search])).rows;
+    },
+    async summary(id: string) {
+      const result = await pool.query<{ total: number; open: number; inProgress: number; resolved: number; closed: number }>(`
+        SELECT count(*)::int AS total,
+          count(*) FILTER (WHERE t.status='open')::int AS open,
+          count(*) FILTER (WHERE t.status='in_progress')::int AS "inProgress",
+          count(*) FILTER (WHERE t.status='resolved')::int AS resolved,
+          count(*) FILTER (WHERE t.status='closed')::int AS closed
+        FROM ticket_incidents l JOIN tickets t ON t.id=l.ticket_id WHERE l.incident_id=$1`, [id]);
+      const row = result.rows[0]!;
+      return { total: row.total, pending: row.open + row.inProgress,
+        byStatus: { open: row.open, in_progress: row.inProgress, resolved: row.resolved, closed: row.closed },
+        scope: { statusBasis: 'current', membership: 'currently_linked' } };
+    },
     async tickets(id: string, limit: number, offset: number) {
       return (await pool.query(`SELECT t.id,t.title,t.status FROM ticket_incidents l JOIN tickets t ON t.id=l.ticket_id WHERE l.incident_id=$1 ORDER BY t.created_at DESC,t.id DESC LIMIT $2 OFFSET $3`,[id,limit,offset])).rows;
     },

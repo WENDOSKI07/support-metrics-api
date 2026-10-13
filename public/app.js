@@ -257,7 +257,7 @@ $('transition').addEventListener('submit', async event => {
   try {
     await api(`/tickets/${ticket.id}/status`, 'PATCH', { expectedVersion: ticket.version, expectedStatus: ticket.status, status: ticket.status === 'resolved' ? $('next-status').value : ticket.status === 'open' ? 'in_progress' : 'resolved', reason });
     if (selected === ticket.id) { $('reason').value = ''; await selectTicket(ticket.id, false); }
-    await refresh(); notice('Cambio de estado guardado en el historial.');
+    await refresh(); if (activeIncident) await openIncident(activeIncident.id,false); notice('Cambio de estado guardado en el historial.');
   } catch (error) {
     if (error.status === 409 && selected === ticket.id) { await selectTicket(ticket.id, false); $('reason').value = reason; }
     notice(error.message, true);
@@ -362,19 +362,24 @@ for (const kind of ['history','management']) {
 let incidentPage = 1, incidentListVersion = 0, incidentDetailVersion = 0, activeIncident = null;
 let incidentTicketsPage = 1, incidentHistoryPage = 1, ticketIncidentPage = 1, linkedIncident = null;
 const incidentDrafts = new Map(), linkDrafts = new Map();
-$('ticket-incident-reason').addEventListener('input', () => { if (current) linkDrafts.set(current.id, {reason: $('ticket-incident-reason').value, id: $('ticket-incident-id').value}); });
-$('ticket-incident-id').addEventListener('input', () => { if (current) linkDrafts.set(current.id, {reason: $('ticket-incident-reason').value, id: $('ticket-incident-id').value}); });
+let incidentFilters = new URLSearchParams();
+$('ticket-incident-reason').addEventListener('input', () => { if (current) linkDrafts.set(current.id, {reason: $('ticket-incident-reason').value, id: $('ticket-incident-id').value, title: $('incident-selection').textContent}); });
+$('ticket-incident-id').addEventListener('input', () => { if (current) linkDrafts.set(current.id, {reason: $('ticket-incident-reason').value, id: $('ticket-incident-id').value, title: $('incident-selection').textContent}); });
 $('incident-reason').addEventListener('input', () => { if (activeIncident) incidentDrafts.set(activeIncident.id,$('incident-reason').value); });
 function incidentNotice(message) { $('incident-notice').textContent = message; }
 async function loadIncidents() {
   const version = ++incidentListVersion;
   $('incident-prev').disabled = true; $('incident-next').disabled = true;
   try {
-    const result = await api(`/incidents?page=${incidentPage}&limit=10`);
+    const params = new URLSearchParams(incidentFilters); params.set('page',String(incidentPage)); params.set('limit','10');
+    const result = await api(`/incidents?${params}`);
     if (version !== incidentListVersion) return;
     $('incident-list').replaceChildren();
     for (const incident of result.data) {
-      const button = element('button', `${incident.status === 'open' ? 'Abierto' : 'Resuelto'} · ${incident.title}`);
+      const button = element('button', undefined, 'incident-row');
+      button.type='button'; button.dataset.incidentId=incident.id;
+      button.setAttribute('aria-pressed',String(activeIncident?.id===incident.id));
+      button.append(element('span',incident.status==='open'?'Abierto':'Resuelto',`badge ${incident.status}`),element('strong',incident.title),element('span',incident.description,'incident-excerpt'),element('small',`Creado ${shortDate(incident.createdAt)}`));
       button.addEventListener('click', () => openIncident(incident.id)); $('incident-list').append(button);
     }
     if (!result.data.length) $('incident-list').append(element('p','No hay incidentes en esta página.'));
@@ -395,9 +400,12 @@ function renderIncidentHistory(rows) {
 async function openIncident(id, focus = true) {
   const version = ++incidentDetailVersion; activeIncident = null; $('incident-detail').hidden = true;
   try {
-    const [incident, tickets, history] = await Promise.all([api(`/incidents/${id}`),api(`/incidents/${id}/tickets`),api(`/incidents/${id}/history`)]);
+    const [incident, tickets, history, summary] = await Promise.all([api(`/incidents/${id}`),api(`/incidents/${id}/tickets`),api(`/incidents/${id}/history`),api(`/incidents/${id}/summary`)]);
     if (version !== incidentDetailVersion) return;
+    for(const row of document.querySelectorAll('.incident-row')) row.setAttribute('aria-pressed',String(row.dataset.incidentId===id));
     activeIncident = incident; incidentTicketsPage = 1; incidentHistoryPage = 1;
+    for (const key of ['total','pending','resolved','closed']) $('incident-'+key).textContent = key === 'resolved' || key === 'closed' ? summary.byStatus[key] : summary[key];
+    $('incident-impact-note').textContent = `${summary.byStatus.open} abiertos · ${summary.byStatus.in_progress} en atención. Estados actuales de los tickets vinculados; Actualizar incidentes renueva el resumen. Un cierre no confirma satisfacción del solicitante.`;
     $('incident-title').textContent = incident.title; $('incident-description').textContent = incident.description;
     $('incident-id').textContent = incident.id; $('incident-state').textContent = `${incident.status === 'open' ? 'Abierto' : 'Resuelto'} · Versión ${incident.version}`;
     $('incident-solution').textContent = incident.solution ? `Solución común: ${incident.solution}` : 'Pendiente de solución común.';
@@ -414,7 +422,7 @@ async function openIncident(id, focus = true) {
 }
 $('incident-create').addEventListener('submit',async event=> {
   event.preventDefault(); const button=event.target.querySelector('[type=submit]'); button.disabled=true;
-  try { const incident=await api('/incidents','POST',Object.fromEntries(new FormData(event.target))); event.target.reset(); incidentPage=1; await loadIncidents(); await openIncident(incident.id); incidentNotice('Incidente creado. Ahora puedes vincular tickets.'); }
+  try { const incident=await api('/incidents','POST',Object.fromEntries(new FormData(event.target))); event.target.reset(); $('incident-filters').reset(); incidentFilters=new URLSearchParams(); incidentPage=1; await loadIncidents(); await openIncident(incident.id); incidentNotice('Incidente creado. Ahora puedes vincular tickets.'); }
   catch(error) { incidentNotice(error.message); } finally { button.disabled=false; }
 });
 $('incident-transition').addEventListener('submit',async event=> {
@@ -434,8 +442,7 @@ $('incident-prev').addEventListener('click',()=> { if (incidentPage>1) { inciden
 $('incident-next').addEventListener('click',()=> { incidentPage++; loadIncidents(); });
 $('use-incident').addEventListener('click',()=> {
   if (!current || current.status==='closed') { incidentNotice('Abre primero un ticket que no esté cerrado.'); return; }
-  $('ticket-incident-id').value=activeIncident.id;
-  linkDrafts.set(current.id,{id:activeIncident.id,reason:$('ticket-incident-reason').value});
+  chooseIncident(activeIncident);
   location.hash='workspace'; $('ticket-incident-reason').focus();
 });
 function renderLinkHistory(rows) {
@@ -448,6 +455,7 @@ function renderTicketIncident(incident, history, ticket) {
   $('ticket-incident-form').hidden=ticket.status==='closed';
   $('ticket-incident-id').value=linkDrafts.get(ticket.id)?.id ?? incident?.id ?? '';
   $('ticket-incident-reason').value=linkDrafts.get(ticket.id)?.reason || '';
+  $('incident-selection').textContent=linkDrafts.get(ticket.id)?.title ?? incident?.title ?? 'Sin incidente seleccionado';
   $('ticket-incident-history').replaceChildren(); renderLinkHistory(history.data);
   $('more-ticket-incident-history').hidden=!history.pagination.hasNext;
 }
@@ -478,3 +486,45 @@ $('more-ticket-incident-history').addEventListener('click',async()=> {
   }catch(error){notice(error.message,true);}finally{button.disabled=false;}
 });
 loadIncidents();
+
+$('incident-filters').addEventListener('submit',event=> {
+  event.preventDefault(); incidentFilters=new URLSearchParams();
+  for(const [key,value] of new FormData(event.target)) if(value.trim()) incidentFilters.set(key,value.trim());
+  incidentPage=1; loadIncidents();
+});
+$('clear-incidents').addEventListener('click',()=> { $('incident-filters').reset(); incidentFilters=new URLSearchParams(); incidentPage=1; loadIncidents(); });
+let pickerPage=1, pickerQuery='', pickerVersion=0, pickerTicket=null;
+function chooseIncident(incident) {
+  $('ticket-incident-id').value=incident?.id || '';
+  $('incident-selection').textContent=incident?.title || 'Sin incidente seleccionado';
+  linkDrafts.set(current.id,{id:incident?.id || '',title:$('incident-selection').textContent,reason:$('ticket-incident-reason').value});
+}
+async function loadPicker() {
+  const version=++pickerVersion;
+  $('picker-prev').disabled=true; $('picker-next').disabled=true;
+  $('picker-results').replaceChildren(); $('picker-notice').textContent='Buscando…';
+  const params=new URLSearchParams({status:'open',page:String(pickerPage),limit:'10'});
+  if(pickerQuery)params.set('q',pickerQuery);
+  try {
+    const result=await api(`/incidents?${params}`);
+    if(version!==pickerVersion || !$('incident-picker').open)return;
+    $('picker-notice').textContent=result.data.length?'Selecciona un incidente; después guarda el vínculo con un motivo.':'No hay incidentes abiertos para esta búsqueda.';
+    for(const incident of result.data) {
+      const button=element('button',`${incident.title} · ${shortDate(incident.createdAt)}`);button.type='button';
+      button.addEventListener('click',()=> { if(current?.id!==pickerTicket)return; chooseIncident(incident);$('incident-picker').close();$('ticket-incident-reason').focus(); });
+      $('picker-results').append(button);
+    }
+    $('picker-page').textContent=`Página ${pickerPage}`;
+    $('picker-prev').disabled=pickerPage<=1; $('picker-next').disabled=!result.pagination.hasNext;
+  }catch(error){if(version===pickerVersion)$('picker-notice').textContent=error.message;}
+}
+$('choose-incident').addEventListener('click',()=> {
+  if(!current || current.status==='closed')return;
+  pickerTicket=current.id;pickerPage=1;pickerQuery='';$('picker-query').value='';$('incident-picker').showModal();loadPicker();
+});
+$('unlink-incident').addEventListener('click',()=> {if(current){chooseIncident(null);$('ticket-incident-reason').focus();}});
+$('picker-close').addEventListener('click',()=> $('incident-picker').close());
+$('incident-picker').addEventListener('close',()=> {pickerVersion++;});
+$('picker-search').addEventListener('submit',event=> {event.preventDefault();pickerQuery=$('picker-query').value.trim();pickerPage=1;loadPicker();});
+$('picker-prev').addEventListener('click',()=> {if(pickerPage>1){pickerPage--;loadPicker();}});
+$('picker-next').addEventListener('click',()=> {pickerPage++;loadPicker();});

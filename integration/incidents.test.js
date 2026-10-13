@@ -16,6 +16,10 @@ test('incidentes: vínculos auditados, concurrencia y ciclos independientes', as
       assert.equal(res.statusCode,201);incidentIds.push(res.json().id);
     }
     const [a,b]=incidentIds;
+    const summary=async id=>(await app.inject(`/incidents/${id}/summary`)).json();
+    assert.deepEqual((await summary(a)).byStatus,{open:0,in_progress:0,resolved:0,closed:0});
+    assert.equal((await app.inject(`/incidents/${a}/summary?page=1`)).statusCode,400);
+    assert.equal((await app.inject(`/incidents/${randomUUID()}/summary`)).statusCode,404);
     for(let i=0;i<2;i++) {
       const res=await app.inject({method:'POST',url:'/tickets',payload:{title:'Solicitud ficticia '+i,description:'Reporte de la misma falla de prueba.',category:'data'}});
       assert.equal(res.statusCode,201);ids.push(res.json().id);
@@ -27,7 +31,7 @@ test('incidentes: vínculos auditados, concurrencia y ciclos independientes', as
     assert.equal((await state(a,1,['resolved'])).statusCode,400);
     assert.equal((await state(a,0,'resolved')).statusCode,400);
     assert.equal((await app.inject('/incidents?limit=101')).statusCode,400);
-    assert.equal((await app.inject('/incidents?status=open')).statusCode,400);
+    assert.equal((await app.inject('/incidents?status=closed')).statusCode,400);
     assert.equal((await app.inject('/incidents?limit=1&limit=2')).statusCode,400);
     assert.equal((await app.inject(`/incidents/${randomUUID()}`)).statusCode,404);
     assert.equal((await link(t,randomUUID(),1)).statusCode,404);
@@ -41,6 +45,8 @@ test('incidentes: vínculos auditados, concurrencia y ciclos independientes', as
     assert.equal((await link(t,null,2)).statusCode,204);
     assert.equal((await link(t,a,3)).statusCode,204);
     assert.equal((await link(u,a,1)).statusCode,204);
+    assert.equal((await summary(a)).total,2); assert.equal((await summary(a)).pending,2);
+    assert.equal((await summary(b)).total,0);
     await pool.query("UPDATE tickets SET created_at='2197-01-01T00:00:00Z' WHERE id=ANY($1::uuid[])",[ids]);
     const scope={createdFrom:'2197-01-01',createdBefore:'2197-01-02'};
     const before=await repo.findById(t);
@@ -70,6 +76,12 @@ test('incidentes: vínculos auditados, concurrencia y ciclos independientes', as
     assert.deepEqual(resolutionRace.map(r=>r.statusCode).sort(),[204,409]);
     assert.equal((await repo.findById(t)).status,'closed');
     assert.equal((await repo.findById(u)).status,'open');
+    const impact=await summary(a);
+    assert.equal(impact.total,2); assert.equal(impact.pending,1);
+    assert.deepEqual(impact.byStatus,{open:1,in_progress:0,resolved:0,closed:1});
+    assert.equal(Object.values(impact.byStatus).reduce((a,b)=>a+b,0),impact.total);
+    assert.equal((await link(u,null,2)).statusCode,204);
+    assert.equal((await summary(a)).total,1); assert.equal((await summary(a)).pending,0);
     await assert.rejects(pool.query("UPDATE incidents SET solution=NULL WHERE id=$1",[a]),{code:'23514'});
     assert.equal((await repo.incidents.find(a)).solution,reason);
   } finally {
@@ -78,5 +90,32 @@ test('incidentes: vínculos auditados, concurrencia y ciclos independientes', as
     await pool.query('DELETE FROM incident_history WHERE incident_id=ANY($1::uuid[])',[incidentIds]);
     await pool.query('DELETE FROM incidents WHERE id=ANY($1::uuid[])',[incidentIds]);
     await app.close(); await pool.end();
+  }
+});
+
+
+test('búsqueda de incidentes: filtros combinados, texto literal y páginas',async()=> {
+  const pool=new pg.Pool({connectionTimeoutMillis:5000}), repo=postgresTicketRepository(pool), app=buildApp(repo);
+  const ids=[], token=randomUUID();
+  try {
+    for(const title of ['Alpha 50%_!','Beta normal','Gamma normal']) {
+      const row=await repo.incidents.create(title,`Descripción de prueba ${token}`);ids.push(row.id);
+    }
+    await repo.incidents.changeStatus(ids[1],1,'resolved','Solución ficticia para comprobar filtros.');
+    const query=async suffix=>(await app.inject('/incidents?q='+token+suffix)).json();
+    assert.equal((await query('&status=open')).data.length,2);
+    assert.equal((await query('&status=resolved')).data[0].id,ids[1]);
+    const first=await query('&limit=1'),second=await query('&limit=1&page=2');
+    assert.equal(first.pagination.hasNext,true);assert.notEqual(first.data[0].id,second.data[0].id);
+    const literal=await app.inject('/incidents?q='+encodeURIComponent('50%_!'));
+    assert.equal(literal.statusCode,200);assert.equal(literal.json().data.some(x=>x.id===ids[0]),true);
+    assert.equal(literal.json().data.some(x=>x.id===ids[1]),false);
+    assert.equal((await app.inject('/incidents?q=ALPHA')).json().data.some(x=>x.id===ids[0]),true);
+    for(const query of ['q=x','q=%00abc','q=ab&q=cd','status=open&status=resolved','status=in_progress','category=data']) assert.equal((await app.inject('/incidents?'+query)).statusCode,400,query);
+    assert.equal((await app.inject(`/incidents/${ids[0]}/history?q=test`)).statusCode,400);
+    assert.equal((await app.inject('/incidents?q='+randomUUID())).json().data.length,0);
+  }finally{
+    await pool.query('DELETE FROM incident_history WHERE incident_id=ANY($1::uuid[])',[ids]);
+    await pool.query('DELETE FROM incidents WHERE id=ANY($1::uuid[])',[ids]);await app.close();await pool.end();
   }
 });
