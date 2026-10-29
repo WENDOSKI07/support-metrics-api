@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import type { AuthStore, Identity } from './auth.repository.js';
 import type { TicketRepository } from '../tickets/ticket.repository.js';
-import { validPassword, verifyPassword } from './password.js';
+import { hashPassword, validPassword, verifyPassword } from './password.js';
 
 declare module 'fastify' { interface FastifyRequest { identity: Identity | null } }
 export const tokenHash = (token: string) => createHash('sha256').update(token).digest('hex');
@@ -46,9 +46,9 @@ export function configureAuth(app: FastifyInstance, tickets: TicketRepository, s
     if (route === '/auth/login' && request.method === 'POST') return;
     const token = readToken(request.headers.cookie);
     const identity = token && store ? await store.session(tokenHash(token)) : undefined;
-    if (!identity) return reply.code(401).send({ error: 'Inicia sesión para continuar.' });
+    if (!identity) return reply.code(401).send({ error: 'Inicia sesiÃ³n para continuar.' });
     request.identity = identity;
-    if (route === '/auth/me' || route === '/auth/logout') return;
+    if (route === '/auth/me' || route === '/auth/logout' || route === '/auth/password') return;
     if (identity.role === 'support') return;
     if (route === '/tickets' && ['GET', 'HEAD', 'POST'].includes(request.method)) return;
     const ownRead = ['/tickets/:id', '/tickets/:id/comments', '/tickets/:id/history', '/tickets/:id/management-history'].includes(route)
@@ -60,24 +60,41 @@ export function configureAuth(app: FastifyInstance, tickets: TicketRepository, s
       if (ticket?.requesterId === identity.id) return;
       return reply.code(404).send({ error: 'Ticket no encontrado.' });
     }
-    return reply.code(403).send({ error: 'Esta operación requiere un agente de soporte.' });
+    return reply.code(403).send({ error: 'Esta operaciÃ³n requiere un agente de soporte.' });
   });
   app.post('/auth/login', { bodyLimit: 2048 }, async (request, reply) => {
     if (!allowAttempt(`ip:${request.ip}`, 20)) return reply.header('Retry-After', '900').code(429).send({ error: 'Demasiados intentos. Espera 15 minutos.' });
     const body = request.body as Record<string, unknown> | null;
     if (!body || typeof body !== 'object' || Object.keys(body).some(k => !['username','password'].includes(k))
       || typeof body.username !== 'string' || !/^[a-z0-9._-]{3,64}$/.test(body.username)
-      || !validPassword(body.password)) return reply.code(400).send({ error: 'Revisa el usuario y la contraseña (mínimo 15 caracteres).' });
+      || !validPassword(body.password)) return reply.code(400).send({ error: 'Revisa el usuario y la contraseÃ±a (mÃ­nimo 15 caracteres).' });
     if (!allowAttempt(`user:${body.username}`, 10) || activeChecks >= 2) return reply.header('Retry-After', '900').code(429).send({ error: 'Demasiados intentos. Espera 15 minutos.' });
     activeChecks++;
     try {
       const user = await store?.credentials(body.username);
-      if (!await verifyPassword(body.password, user?.passwordHash) || !user) return reply.code(401).send({ error: 'Usuario o contraseña incorrectos.' });
+      if (!await verifyPassword(body.password, user?.passwordHash) || !user) return reply.code(401).send({ error: 'Usuario o contraseÃ±a incorrectos.' });
       const previous = readToken(request.headers.cookie);
       if (previous) await store!.revoke(tokenHash(previous));
       const token = randomBytes(32).toString('hex');
-      await store!.createSession(tokenHash(token), user.id);
+      if (await store!.createSession(tokenHash(token), user.id, user.passwordHash) === false) return reply.code(409).send({ error: 'Las credenciales cambiaron. Inicia sesión de nuevo.' });
       return reply.header('Set-Cookie', cookie(token, 8 * 3600)).send({ user: { id: user.id, username: user.username, role: user.role } });
+    } finally { activeChecks--; }
+  });
+  app.post('/auth/password', { bodyLimit: 2048 }, async (request, reply) => {
+    const identity = request.identity!;
+    if (!allowAttempt(`password:${identity.id}`, 5) || activeChecks >= 2) return reply.header('Retry-After', '900').code(429).send({ error: 'Demasiados intentos. Espera 15 minutos.' });
+    const body = request.body as Record<string, unknown> | null;
+    if (!body || typeof body !== 'object' || Object.keys(body).some(k => !['currentPassword','newPassword'].includes(k))
+      || !validPassword(body.currentPassword) || !validPassword(body.newPassword) || body.currentPassword === body.newPassword) {
+      return reply.code(400).send({ error: 'Envía la contraseña actual y una nueva diferente de al menos 15 caracteres (máximo 256 bytes).' });
+    }
+    activeChecks++;
+    try {
+      const user = await store!.credentials(identity.username);
+      if (!await verifyPassword(body.currentPassword, user?.passwordHash) || !user) return reply.code(400).send({ error: 'La contraseña actual no es correcta.' });
+      const newHash = await hashPassword(body.newPassword);
+      if (!await store!.changePassword(identity.id, user.passwordHash, newHash)) return reply.code(409).send({ error: 'La cuenta cambió. Inicia sesión de nuevo antes de reintentar.' });
+      return reply.header('Set-Cookie', cookie('', 0)).code(204).send();
     } finally { activeChecks--; }
   });
   app.get('/auth/me', async request => ({ user: request.identity }));

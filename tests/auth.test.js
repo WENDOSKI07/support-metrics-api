@@ -48,3 +48,25 @@ test('cookie HTTPS segura y rotación de sesión al iniciar sesión', async t =>
   assert.ok(!result.body.includes(passwordHash));
   assert.ok(!result.headers['set-cookie'].includes(created[0]));
 });
+
+test('cambio de contraseña exige sesión, contraseña actual y limita intentos', async t => {
+ const passwordHash=await hashPassword('Contraseña actual ficticia 2026');
+ let changed=0;
+ const app=buildApp({}, {}, {
+  async session(){return {id:'requester-test',username:'requester-test',role:'requester'};},
+  async credentials(){return {id:'requester-test',username:'requester-test',role:'requester',passwordHash};},
+  async changePassword(){changed++; return true;}
+ });
+ t.after(()=>app.close());
+ const change=payload=>app.inject({method:'POST',url:'/auth/password',headers:{...headers,cookie:`session=${'b'.repeat(64)}`},payload});
+ const payload={currentPassword:'Contraseña actual ficticia 2026',newPassword:'Contraseña distinta ficticia 2026'};
+ assert.equal((await app.inject({method:'POST',url:'/auth/password',headers,payload})).statusCode,401);
+ assert.equal((await change({...payload,newPassword:'corta'})).statusCode,400);
+ assert.equal((await change({...payload,currentPassword:'Otra contraseña falsa extensa'})).statusCode,400);
+ assert.equal(changed,0);
+ const response=await change(payload);
+ assert.equal(response.statusCode,204); assert.match(response.headers['set-cookie'],/Max-Age=0/);
+ assert.equal(changed,1);
+ await change({}); await change({});
+ assert.equal((await change(payload)).statusCode,429);
+});

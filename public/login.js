@@ -14,3 +14,5 @@ form.addEventListener('submit', async event => {
   } catch (cause) { error.textContent = cause.message; }
   finally { button.disabled = false; button.textContent = 'Iniciar sesión'; }
 });
+
+if (new URLSearchParams(location.search).get('passwordChanged') === '1') document.getElementById('login-status').textContent = 'Contraseña actualizada. Inicia sesión con la nueva contraseña.';

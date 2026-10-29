@@ -76,3 +76,36 @@ test('sesiones PostgreSQL, permisos, aislamiento, CSRF, SQL y revocación', asyn
     await app.close(); await pool.end();
   }
 });
+
+
+test('cambiar contraseña revoca todas las sesiones y rechaza credenciales antiguas y carreras', async () => {
+ const pool=new pg.Pool({connectionTimeoutMillis:5000});
+ const store=postgresAuthStore(pool), app=buildApp(postgresTicketRepository(pool),{},store);
+ const id=randomUUID(), username='password-'+id;
+ const oldPassword='Frase ficticia anterior para pruebas', newPassword='Frase ficticia nueva para pruebas';
+ const oldHash=await hashPassword(oldPassword);
+ const headers={origin:'http://127.0.0.1:3000','x-requested-with':'support-metrics'};
+ const login=password=>app.inject({method:'POST',url:'/auth/login',headers,payload:{username,password}});
+ try {
+  await pool.query('INSERT INTO app_users(id,username,password_hash,role) VALUES($1,$2,$3,$4)',[id,username,oldHash,'requester']);
+  const cookies=[];
+  for(let i=0;i<2;i++) cookies.push((await login(oldPassword)).headers['set-cookie'].split(';')[0]);
+  const change=(payload,extra={})=>app.inject({method:'POST',url:'/auth/password',headers:{...headers,cookie:cookies[0],...extra},payload});
+  const payload={currentPassword:oldPassword,newPassword};
+  assert.equal((await app.inject({method:'POST',url:'/auth/password',headers,payload})).statusCode,401);
+  assert.equal((await change(payload,{origin:'https://evil.example'})).statusCode,403);
+  assert.equal((await change({...payload,userId:randomUUID()})).statusCode,400);
+  assert.equal((await change({...payload,currentPassword:'Una contraseña equivocada larga'})).statusCode,400);
+  assert.equal((await change({...payload,newPassword:oldPassword})).statusCode,400);
+  assert.equal((await change(payload)).statusCode,204);
+  for(const cookie of cookies) assert.equal((await app.inject({url:'/auth/me',headers:{cookie}})).statusCode,401);
+  assert.equal((await login(oldPassword)).statusCode,401);
+  assert.equal((await login(newPassword)).statusCode,200);
+  assert.equal(await store.createSession('e'.repeat(64),id,oldHash),false);
+  const current=await store.credentials(username);
+  const nextHash=await hashPassword('Otra frase ficticia para concurrencia');
+  const result=await Promise.all([store.changePassword(id,current.passwordHash,nextHash),store.changePassword(id,current.passwordHash,oldHash)]);
+  assert.equal(result.filter(Boolean).length,1);
+  assert.equal((await pool.query('SELECT count(*)::int AS n FROM auth_sessions WHERE user_id=$1',[id])).rows[0].n,0);
+ } finally { await pool.query('DELETE FROM app_users WHERE id=$1',[id]); await app.close(); await pool.end(); }
+});

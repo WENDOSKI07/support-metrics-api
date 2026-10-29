@@ -564,3 +564,19 @@ $('logout').addEventListener('click', async () => {
 // Revalidate when restoring a cached tab after logging out elsewhere.
 window.addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
 initializeSession();
+
+$('change-password').addEventListener('click', () => { $('password-form').reset(); $('password-error').textContent = ''; $('password-dialog').showModal(); });
+$('password-close').addEventListener('click', () => $('password-dialog').close());
+$('password-dialog').addEventListener('close', () => { $('password-form').reset(); $('change-password').focus(); });
+$('password-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const form = event.target, values = Object.fromEntries(new FormData(form));
+  $('password-error').textContent = '';
+  if (values.newPassword !== values.confirmation) { $('password-error').textContent = 'Las nuevas contraseñas no coinciden.'; return; }
+  const button = form.querySelector('[type=submit]'); button.disabled = true;
+  try {
+    await api('/auth/password', 'POST', { currentPassword: values.currentPassword, newPassword: values.newPassword });
+    form.reset(); drafts.clear(); location.replace('/login?passwordChanged=1');
+  } catch (error) { $('password-error').textContent = error.message; }
+  finally { button.disabled = false; }
+});

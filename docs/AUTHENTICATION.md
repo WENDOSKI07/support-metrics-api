@@ -36,6 +36,12 @@ La configuración HTTP solo se admite para localhost/127.0.0.1:3000. Para public
 
 Para suspender un usuario, un administrador de PostgreSQL puede actualizar `app_users.active=false`; el acceso se deniega inmediatamente, incluidas sesiones existentes. Los respaldos contienen hashes de contraseñas y sesiones: conservarlos privados y con acceso restringido, junto con las credenciales de PostgreSQL. La exportación analítica no incluye estas tablas.
 
-Todavía no hay recuperación por correo, cambio de contraseña desde la interfaz, MFA ni auditoría de intentos centralizada. El cierre de sesión afecta la sesión actual. La administración de cuentas se hace localmente; no se expone un endpoint administrativo. Las pruebas usan cuentas ficticias y las eliminan al finalizar.
+Todavía no hay recuperación por correo, MFA ni auditoría de intentos centralizada. El cierre de sesión afecta la sesión actual. La administración de cuentas se hace localmente; no se expone un endpoint administrativo. Las pruebas usan cuentas ficticias y las eliminan al finalizar.
 
 Referencia de parámetros: [OWASP Password Storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html).
+
+## Cambiar la contraseña
+
+Desde la barra lateral, selecciona **Cambiar contraseña**. Ambos roles pueden cambiar únicamente la suya. Se exige contraseña actual, nueva diferente (15 caracteres mínimo, 256 bytes máximo) y confirmación en el formulario. Al terminar se cierran todas las sesiones y se vuelve al login.
+
+`POST /auth/password` recibe solo `currentPassword` y `newPassword`, con sesión y protección de origen. Devuelve 204; 400 ante datos incorrectos, 409 si las credenciales cambiaron durante la operación y 429 después de 5 intentos por cuenta en 15 minutos. El hash y la revocación se actualizan en una transacción; los logins verifican de nuevo el hash bajo bloqueo antes de crear sesión. No requiere migraciones ni dependencias nuevas.
