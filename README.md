@@ -170,15 +170,13 @@ Agrupa solicitudes de un mismo problema, registra una solución común y conserv
 
 `npm run analytics:export` genera una instantánea CSV por ticket para estudiar carga, tiempos e incidentes. [Guía de importación, medidas y límites](docs/POWER-BI.md).
 
-## Próximas etapas
+## Estado de la demo
+
+Identidad y permisos por usuario, incidentes compartidos y exportaciones para análisis con Power BI ya forman parte de la implementación actual. Consulta sus guías específicas para conocer reglas y límites.
 
 [Notas preparadas para v0.1.0](docs/RELEASE-v0.1.0.md): funcionalidades, validaciones y límites de la demo.
 
-- Identidad y permisos por usuario.
-
-- Análisis de problemas recurrentes y exploración con Power BI.
-
-Estas capacidades están pendientes. El proyecto avanza por etapas con reglas y pruebas antes de ampliar el alcance.
+La aplicación sigue orientada al aprendizaje y a la demostración local. GitHub Actions está desactivado; las comprobaciones se ejecutan localmente con los comandos documentados.
 
 ---
 
