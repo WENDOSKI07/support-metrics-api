@@ -200,6 +200,19 @@
         },
         "options": {}
       }
+    },
+    {
+      "id": "Desde otro workflow",
+      "name": "Desde otro workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        460
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
     }
   ],
   "connections": {
@@ -252,6 +265,17 @@
         [
           {
             "node": "Resumen de soporte",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Desde otro workflow": {
+      "main": [
+        [
+          {
+            "node": "Configuración",
             "type": "main",
             "index": 0
           }

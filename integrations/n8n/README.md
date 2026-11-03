@@ -1,9 +1,10 @@
 # n8n · resumen de soporte
 
-Dos flujos manuales importables, sin servicios de pago ni modelos de IA:
+Tres flujos importables, sin servicios de pago ni modelos de IA:
 
 - `demo-resumen.json`: datos ficticios → resumen. Resultado esperado: 12 tickets, 5 pendientes, 6 resueltos y 1 cerrado. No necesita ejecutar Support Metrics.
 - `resumen-api.json`: login → métricas globales → logout → resumen. Consulta la API existente sin modificar tickets. No es una alerta en tiempo real ni un reporte de tickets creados hoy: muestra el estado global en el instante de consulta.
+- `resumen-diario.json`: ejecuta el flujo real todos los días a las **08:00, America/Bogota** y conserva el resumen en sus ejecuciones. También permite consultar manualmente.
 
 ```mermaid
 flowchart LR
@@ -50,7 +51,15 @@ En la instancia configurada, abre [el flujo real](http://localhost:5678/workflow
 
 La sesión se toma de `Set-Cookie`, se utiliza para leer las métricas y se revoca en el paso de logout. Si una petición falla antes de logout, el flujo se detiene y la sesión queda hasta su caducidad habitual (8 horas); no se promete limpieza ante errores. No exportes ejecuciones con cookies. La configuración evita guardar ejecuciones, pero sus salidas pueden verse durante una ejecución manual.
 
-La automatización usa un usuario de soporte porque todavía no existe una credencial de servicio con permisos de solo lectura. Los workflows permanecen inactivos y sin horario. Un siguiente paso sería añadir un horario y un destino de notificaciones elegido por el propietario.
+La automatización usa un usuario de soporte porque todavía no existe una credencial de servicio con permisos de solo lectura.
+
+## Resumen diario a las 08:00 de Colombia
+
+En la instalación local quedaron publicados el subflujo real y [el workflow diario](http://localhost:5678/workflow/supportMetricsDaily). Su horario usa `0 8 * * *` con zona explícita `America/Bogota`. Abre **Executions**, elige una ejecución correcta y abre **Obtener resumen real → Output** para consultar los contadores. El workflow diario guarda sus resultados; el subflujo autenticado no guarda los pasos con cookies. No se envían mensajes externos.
+
+En otra instalación, importa y configura primero `resumen-api.json`, publícalo, importa `resumen-diario.json` y publica este último. Si los identificadores cambian, selecciona el subflujo correcto en **Obtener resumen real**. Los JSON del repositorio están inactivos para que importar por sí solo no programe consultas.
+
+La prueba inmediata del workflow diario terminó en `success` contra la API real. Los resultados se conservan conforme a la retención y poda de ejecuciones de tu instancia, no como archivo permanente. Para pausar el horario, despublica únicamente el workflow diario. Si el equipo está apagado o la API no responde a las 08:00, no se garantiza un resumen: revisa las ejecuciones y ejecuta manualmente al recuperar los servicios.
 
 ## Servicios necesarios
 

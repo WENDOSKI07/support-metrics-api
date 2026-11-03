@@ -208,7 +208,7 @@ Agrupa solicitudes de un mismo problema, registra una solución común y conserv
 
 Ya incluye login con roles, cambio de contraseña, incidentes compartidos, exportación para Power BI y un flujo de n8n conectado a la API real. También dispone de una colección importable en Hoppscotch y una prueba de navegador con Tester Army E2E.
 
-Pendientes: acordar horario y destino de notificaciones de n8n, permisos de solo lectura para integraciones, recuperación de contraseña y despliegue fuera del equipo local. La exportación para Power BI está disponible; no hay un dashboard publicado incluido. [Guía completa y límites](docs/GUIA-DE-USO.md).
+El resumen de n8n está programado diariamente a las **08:00 de Colombia**, con resultados consultables dentro de n8n. Pendientes: permisos de solo lectura para integraciones, recuperación de contraseña y despliegue fuera del equipo local. La exportación para Power BI está disponible; no hay un dashboard publicado incluido. [Guía completa y límites](docs/GUIA-DE-USO.md).
 
 ---
 

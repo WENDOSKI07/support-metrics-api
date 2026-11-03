@@ -62,7 +62,9 @@ Resolver un incidente conserva su solución común, pero **no resuelve automáti
 
 El flujo consulta el estado global actual, sin filtrar por fecha. No crea ni resuelve tickets. La credencial de la instalación configurada está en n8n y no en el repositorio. Los valores cambian al trabajar en la aplicación; no deben coincidir siempre con los resultados históricos de una prueba.
 
-Actualmente la ejecución es manual. Programar un horario requiere mantener PostgreSQL, API y n8n encendidos. El envío de avisos necesita elegir y configurar un destino; no existe un canal de notificaciones conectado por defecto. [Instalación y conexión de n8n](../integrations/n8n/README.md).
+El [workflow diario](http://localhost:5678/workflow/supportMetricsDaily) consulta automáticamente a las **08:00 de Colombia**. Abre su pestaña **Executions**, selecciona una ejecución y consulta **Obtener resumen real → Output**. El resultado queda solo en n8n, sin correo ni Telegram. Para consultar ahora, usa su disparador manual. Para pausarlo, despublica el workflow diario.
+
+PostgreSQL, API y n8n deben permanecer encendidos a esa hora. Si un servicio falla, revisa la ejecución y consulta manualmente tras recuperarlo; no se garantiza recuperar horarios perdidos. [Instalación y conexión de n8n](../integrations/n8n/README.md).
 
 ## Iniciar después de apagar el equipo
 
