@@ -15,6 +15,8 @@
 
 Una mesa de soporte para **registrar solicitudes, conservar su conversación y medir su atención**. Backend en TypeScript con PostgreSQL e interfaz web nativa, construidos como proyecto de aprendizaje y portafolio.
 
+**Empieza aquí:** [guía de uso del sistema](docs/GUIA-DE-USO.md): acceso por roles, ciclo del ticket, incidentes, métricas, n8n y puesta en marcha diaria.
+
 ![Dashboard de Support Metrics con métricas, filtros y bandeja de tickets](docs/assets/dashboard.png)
 
 <p align="center"><sub>Interfaz del proyecto ejecutada localmente con datos ficticios.</sub></p>
@@ -200,15 +202,13 @@ Agrupa solicitudes de un mismo problema, registra una solución común y conserv
 
 `npm run analytics:export` genera una instantánea CSV por ticket para estudiar carga, tiempos e incidentes. [Guía de importación, medidas y límites](docs/POWER-BI.md).
 
-## Próximas etapas
+## Estado actual y próximos pasos
 
 [Notas preparadas para v0.1.0](docs/RELEASE-v0.1.0.md): funcionalidades, validaciones y límites de la demo.
 
-- Identidad y permisos por usuario.
+Ya incluye login con roles, cambio de contraseña, incidentes compartidos, exportación para Power BI y un flujo de n8n conectado a la API real. También dispone de una colección importable en Hoppscotch y una prueba de navegador con Tester Army E2E.
 
-- Análisis de problemas recurrentes y exploración con Power BI.
-
-Estas capacidades están pendientes. El proyecto avanza por etapas con reglas y pruebas antes de ampliar el alcance.
+Pendientes: acordar horario y destino de notificaciones de n8n, permisos de solo lectura para integraciones, recuperación de contraseña y despliegue fuera del equipo local. La exportación para Power BI está disponible; no hay un dashboard publicado incluido. [Guía completa y límites](docs/GUIA-DE-USO.md).
 
 ---
 

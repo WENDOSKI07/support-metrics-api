@@ -11,7 +11,7 @@ Un incidente representa un problema común; un ticket conserva la solicitud y el
 - Se permite corregir o quitar un vínculo con motivo. Los tickets cerrados conservan su vínculo en modo lectura.
 - No se eliminan tickets ni incidentes mediante la API. Desvincular quita la asociación actual y registra ambos identificadores en el historial.
 - Cambiar un vínculo incrementa la versión del ticket; cambiar el estado del incidente incrementa su propia versión. Una versión antigua devuelve `409`.
-- Las identidades siguen siendo ficticias. No se incorporan permisos, notificaciones ni detección automática de problemas duplicados.
+- La gestión de incidentes requiere una sesión de soporte. El catálogo de responsables del ticket sigue siendo ficticio. No se incorporan notificaciones ni detección automática de problemas duplicados.
 
 Ejemplo: 20 solicitudes pueden compartir la misma solución, pero si solo 18 personas recuperaron el servicio, los otros dos tickets continúan su atención. El incidente resuelto sigue visible en todos los tickets vinculados.
 
