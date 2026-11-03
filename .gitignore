@@ -33,3 +33,6 @@ Thumbs.db
 /exports/
 *.pbix
 *.pbit
+
+# Resultados y credenciales efímeras de pruebas de navegador
+/.e2e/

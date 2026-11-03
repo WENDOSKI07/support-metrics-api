@@ -160,6 +160,8 @@ Las pruebas cubren validaciones, persistencia, paginación, búsqueda, comentari
 
 GitHub Actions está desactivado. Las comprobaciones se ejecutan localmente.
 
+El recorrido de navegador con **Tester Army E2E** comprueba la creación, asignación, atención y resolución de un ticket con dos usuarios y una base temporal. [Requisitos y ejecución de `npm run test:e2e`](docs/E2E.md).
+
 [Consultar la guía técnica](docs/DEVELOPMENT.md)
 
 ## Incidentes compartidos

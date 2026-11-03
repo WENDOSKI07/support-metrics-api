@@ -19,15 +19,18 @@
     "db:backup": "node --env-file=.env scripts/db-backup.mjs",
     "db:verify-backup": "node --env-file=.env scripts/db-verify-backup.mjs",
     "analytics:export": "node --env-file=.env scripts/export-analytics.mjs",
-    "auth:create": "npm run build && node --env-file=.env scripts/create-user.mjs"
+    "auth:create": "npm run build && node --env-file=.env scripts/create-user.mjs",
+    "test:e2e": "node scripts/run-e2e.mjs"
   },
   "dependencies": {
     "fastify": "^5.12.5",
     "pg": "^8.23.1"
   },
   "devDependencies": {
+    "@e2e-dev/web": "0.15.4",
     "@types/node": "^20.19.43",
     "@types/pg": "^8.23.1",
+    "e2e": "0.22.0",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3"
   }
