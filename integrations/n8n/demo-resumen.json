@@ -1,0 +1,123 @@
+{
+  "name": "DEMO · resumen de soporte con datos ficticios",
+  "nodes": [
+    {
+      "id": "Ejecutar manualmente",
+      "name": "Ejecutar manualmente",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        260
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "Métricas ficticias",
+      "name": "Métricas ficticias",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        260,
+        260
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\"total\":12,\"byStatus\":{\"open\":3,\"in_progress\":2,\"resolved\":6,\"closed\":1},\"measuredAt\":\"2026-11-03T12:00:00.000Z\"}",
+        "options": {}
+      }
+    },
+    {
+      "id": "Resumen de soporte",
+      "name": "Resumen de soporte",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        880,
+        260
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "titulo",
+              "name": "titulo",
+              "value": "Support Metrics · resumen operativo",
+              "type": "string"
+            },
+            {
+              "id": "total",
+              "name": "total",
+              "value": "={{ $json.total }}",
+              "type": "number"
+            },
+            {
+              "id": "pendientes",
+              "name": "pendientes",
+              "value": "={{ $json.byStatus.open + $json.byStatus.in_progress }}",
+              "type": "number"
+            },
+            {
+              "id": "resueltos",
+              "name": "resueltos",
+              "value": "={{ $json.byStatus.resolved }}",
+              "type": "number"
+            },
+            {
+              "id": "cerrados",
+              "name": "cerrados",
+              "value": "={{ $json.byStatus.closed }}",
+              "type": "number"
+            },
+            {
+              "id": "medidoEn",
+              "name": "medidoEn",
+              "value": "={{ $json.measuredAt }}",
+              "type": "string"
+            },
+            {
+              "id": "mensaje",
+              "name": "mensaje",
+              "value": "={{ \"Tickets: \" + $json.total + \" | Abiertos: \" + $json.byStatus.open + \" | En atención: \" + $json.byStatus.in_progress + \" | Resueltos: \" + $json.byStatus.resolved + \" | Cerrados: \" + $json.byStatus.closed }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Ejecutar manualmente": {
+      "main": [
+        [
+          {
+            "node": "Métricas ficticias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Métricas ficticias": {
+      "main": [
+        [
+          {
+            "node": "Resumen de soporte",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false
+  },
+  "active": false,
+  "pinData": {},
+  "id": "supportMetricsDemo"
+}

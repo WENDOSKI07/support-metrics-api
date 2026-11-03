@@ -1,0 +1,271 @@
+{
+  "name": "Support Metrics · consultar resumen por API",
+  "nodes": [
+    {
+      "id": "Ejecutar manualmente",
+      "name": "Ejecutar manualmente",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        260
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "Configuración",
+      "name": "Configuración",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        180,
+        260
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "baseUrl",
+              "name": "baseUrl",
+              "value": "http://host.docker.internal:3000",
+              "type": "string"
+            },
+            {
+              "id": "appOrigin",
+              "name": "appOrigin",
+              "value": "http://127.0.0.1:3000",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "Login",
+      "name": "Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        360,
+        260
+      ],
+      "parameters": {
+        "url": "={{ $('Configuración').first().json.baseUrl + '/auth/login' }}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Origin",
+              "value": "={{ $('Configuración').first().json.appOrigin }}"
+            },
+            {
+              "name": "X-Requested-With",
+              "value": "support-metrics"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}"
+      }
+    },
+    {
+      "id": "Consultar métricas",
+      "name": "Consultar métricas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        540,
+        260
+      ],
+      "parameters": {
+        "url": "={{ $('Configuración').first().json.baseUrl + '/metrics/tickets' }}",
+        "options": {
+          "timeout": 10000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "={{ $('Login').first().json.headers['set-cookie'][0].split(';')[0] }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "Cerrar sesión",
+      "name": "Cerrar sesión",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        260
+      ],
+      "parameters": {
+        "url": "={{ $('Configuración').first().json.baseUrl + '/auth/logout' }}",
+        "options": {
+          "timeout": 10000
+        },
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "={{ $('Login').first().json.headers['set-cookie'][0].split(';')[0] }}"
+            },
+            {
+              "name": "Origin",
+              "value": "={{ $('Configuración').first().json.appOrigin }}"
+            },
+            {
+              "name": "X-Requested-With",
+              "value": "support-metrics"
+            }
+          ]
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "Resumen de soporte",
+      "name": "Resumen de soporte",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        880,
+        260
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "titulo",
+              "name": "titulo",
+              "value": "Support Metrics · resumen operativo",
+              "type": "string"
+            },
+            {
+              "id": "total",
+              "name": "total",
+              "value": "={{ $('Consultar métricas').first().json.total }}",
+              "type": "number"
+            },
+            {
+              "id": "pendientes",
+              "name": "pendientes",
+              "value": "={{ $('Consultar métricas').first().json.byStatus.open + $('Consultar métricas').first().json.byStatus.in_progress }}",
+              "type": "number"
+            },
+            {
+              "id": "resueltos",
+              "name": "resueltos",
+              "value": "={{ $('Consultar métricas').first().json.byStatus.resolved }}",
+              "type": "number"
+            },
+            {
+              "id": "cerrados",
+              "name": "cerrados",
+              "value": "={{ $('Consultar métricas').first().json.byStatus.closed }}",
+              "type": "number"
+            },
+            {
+              "id": "medidoEn",
+              "name": "medidoEn",
+              "value": "={{ $('Consultar métricas').first().json.measuredAt }}",
+              "type": "string"
+            },
+            {
+              "id": "mensaje",
+              "name": "mensaje",
+              "value": "={{ \"Tickets: \" + $('Consultar métricas').first().json.total + \" | Abiertos: \" + $('Consultar métricas').first().json.byStatus.open + \" | En atención: \" + $('Consultar métricas').first().json.byStatus.in_progress + \" | Resueltos: \" + $('Consultar métricas').first().json.byStatus.resolved + \" | Cerrados: \" + $('Consultar métricas').first().json.byStatus.closed }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Ejecutar manualmente": {
+      "main": [
+        [
+          {
+            "node": "Configuración",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuración": {
+      "main": [
+        [
+          {
+            "node": "Login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Login": {
+      "main": [
+        [
+          {
+            "node": "Consultar métricas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar métricas": {
+      "main": [
+        [
+          {
+            "node": "Cerrar sesión",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cerrar sesión": {
+      "main": [
+        [
+          {
+            "node": "Resumen de soporte",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false
+  },
+  "active": false,
+  "pinData": {},
+  "id": "supportMetricsApi"
+}

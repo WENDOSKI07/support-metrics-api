@@ -145,6 +145,8 @@ sequenceDiagram
 
 [Explorar la API con Hoppscotch: colección y pasos](docs/api/README.md). Incluye autenticación, tickets, comentarios, gestión, historiales y métricas, con credenciales vacías para configurar localmente.
 
+[Automatización con n8n](integrations/n8n/README.md): demo de resumen operativo con datos ficticios y un segundo flujo para consultar métricas mediante la API autenticada.
+
 ```text
 public/        Dashboard y guía web
 src/           Rutas, validaciones y acceso a datos
