@@ -1,0 +1,389 @@
+{
+  "info": {
+    "name": "Support Metrics · recorrido local",
+    "description": "Colección Postman v2.1 importable en Hoppscotch. Credenciales vacías; sesión por cookie. Consultar docs/api/README.md antes de ejecutar.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:3000",
+      "type": "string"
+    },
+    {
+      "key": "username",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ticketId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "version",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "currentStatus",
+      "value": "open",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 · Salud pública",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-Requested-With",
+            "value": "support-metrics"
+          }
+        ],
+        "url": "{{baseUrl}}/health",
+        "description": ""
+      }
+    },
+    {
+      "name": "02 · Iniciar sesión",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-Requested-With",
+            "value": "support-metrics"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "description": "Usa una cuenta local. Conserva la cookie de sesión en el cliente.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "03 · Identidad actual",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-Requested-With",
+            "value": "support-metrics"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/me",
+        "description": ""
+      }
+    },
+    {
+      "name": "04 · Crear ticket",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-Requested-With",
+            "value": "support-metrics"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/tickets",
+        "description": "Copia el id devuelto a ticketId y version a version.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Demo API: descarga del reporte\",\n  \"description\": \"Solicitud ficticia para explorar el ciclo de atención.\",\n  \"category\": \"functionality\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "05 · Listar tickets",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-Requested-With",
+            "value": "support-metrics"
+          }
+        ],
+        "url": "{{baseUrl}}/tickets?page=1&limit=20",
+        "description": ""
+      }
+    },
+    {
+      "name": "06 · Consultar ticket y versión",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-Requested-With",
+            "value": "support-metrics"
+          }
+        ],
+        "url": "{{baseUrl}}/tickets/{{ticketId}}",
+        "description": "Actualiza version y currentStatus con esta respuesta antes de cada PATCH."
+      }
+    },
+    {
+      "name": "07 · Añadir comentario",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-Requested-With",
+            "value": "support-metrics"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/tickets/{{ticketId}}/comments",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"body\": \"Comentario ficticio para la demostración de la API.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "08 · Consultar agentes (soporte)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-Requested-With",
+            "value": "support-metrics"
+          }
+        ],
+        "url": "{{baseUrl}}/agents",
+        "description": ""
+      }
+    },
+    {
+      "name": "09 · Asignar responsable (soporte)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-Requested-With",
+            "value": "support-metrics"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/tickets/{{ticketId}}/management",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"expectedVersion\": {{version}},\n  \"kind\": \"assignment\",\n  \"value\": \"demo-agent-1\",\n  \"reason\": \"Se asigna un agente ficticio para revisar la solicitud.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "10 · Iniciar atención (soporte)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-Requested-With",
+            "value": "support-metrics"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/tickets/{{ticketId}}/status",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"expectedVersion\": {{version}},\n  \"expectedStatus\": \"{{currentStatus}}\",\n  \"status\": \"in_progress\",\n  \"reason\": \"Se inicia la revisión del reporte en la demostración.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "11 · Resolver (soporte)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-Requested-With",
+            "value": "support-metrics"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/tickets/{{ticketId}}/status",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"expectedVersion\": {{version}},\n  \"expectedStatus\": \"{{currentStatus}}\",\n  \"status\": \"resolved\",\n  \"reason\": \"Se corrige el filtro y se verifica la descarga del reporte.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "12 · Historial de estados",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-Requested-With",
+            "value": "support-metrics"
+          }
+        ],
+        "url": "{{baseUrl}}/tickets/{{ticketId}}/history?page=1&limit=20",
+        "description": ""
+      }
+    },
+    {
+      "name": "13 · Historial de clasificación",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-Requested-With",
+            "value": "support-metrics"
+          }
+        ],
+        "url": "{{baseUrl}}/tickets/{{ticketId}}/management-history?page=1&limit=20",
+        "description": ""
+      }
+    },
+    {
+      "name": "14 · Métricas (soporte)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-Requested-With",
+            "value": "support-metrics"
+          }
+        ],
+        "url": "{{baseUrl}}/metrics/tickets",
+        "description": ""
+      }
+    },
+    {
+      "name": "15 · Cerrar sesión",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-Requested-With",
+            "value": "support-metrics"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/logout",
+        "description": ""
+      }
+    }
+  ]
+}

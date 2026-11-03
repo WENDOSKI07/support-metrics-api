@@ -107,8 +107,12 @@ Para importarlo en Excel o Power BI, selecciona CSV UTF-8 con separador coma y p
 
 ```mermaid
 flowchart LR
-    UI[HTML · CSS · JavaScript] --> API[Fastify · TypeScript]
-    API --> DB[(PostgreSQL)]
+    UI[Interfaz web nativa] --> AUTH[Sesión y permisos]
+    CLIENT[Hoppscotch · cliente de API] --> AUTH
+    AUTH --> API[Fastify · validación y reglas]
+    API --> REPO[Repositorio · SQL parametrizado]
+    REPO --> DB[(PostgreSQL)]
+    E2E[Tester Army E2E] --> UI
 ```
 
 | Capa | Tecnología y responsabilidad |
@@ -118,6 +122,28 @@ flowchart LR
 | Persistencia | PostgreSQL, SQL parametrizado, migraciones y transacciones |
 | Entorno local | Docker Compose para PostgreSQL |
 | Verificación | Node.js Test Runner; pruebas locales aisladas y con PostgreSQL |
+
+### De la solicitud a la solución
+
+```mermaid
+sequenceDiagram
+    actor Solicitante
+    participant API
+    participant DB as PostgreSQL
+    actor Soporte
+    Solicitante->>API: Login y creación de ticket
+    API->>DB: Guardar ticket abierto
+    Soporte->>API: Consultar ticket y versión
+    Soporte->>API: Asignar responsable con versión actual
+    API->>DB: Actualizar y guardar evento en transacción
+    Soporte->>API: Iniciar atención y luego resolver con motivo
+    API->>DB: Guardar cada estado e historial en transacción
+    Solicitante->>API: Consultar su ticket e historial
+    API->>DB: Leer datos persistidos
+    API-->>Solicitante: Solución e historial
+```
+
+[Explorar la API con Hoppscotch: colección y pasos](docs/api/README.md). Incluye autenticación, tickets, comentarios, gestión, historiales y métricas, con credenciales vacías para configurar localmente.
 
 ```text
 public/        Dashboard y guía web
