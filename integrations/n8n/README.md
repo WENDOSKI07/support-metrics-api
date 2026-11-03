@@ -29,7 +29,11 @@ El servicio se publica solo en la interfaz local; el volumen conserva tu configu
 docker compose -f integrations/n8n/compose.yaml down
 ```
 
-Validación local: la demo se importó y ejecutó con n8n 2.46.4. Terminó con estado `success` y produjo exactamente 12 tickets, 5 pendientes, 6 resueltos y 1 cerrado. El flujo autenticado es una plantilla pendiente de comprobar con una credencial local y conectividad a la API.
+Validación local: ambos flujos se importaron y ejecutaron con n8n 2.46.4. La demo produjo exactamente 12 tickets, 5 pendientes, 6 resueltos y 1 cerrado.
+
+El 3 de noviembre de 2026 se conectó el flujo autenticado con la API y el volumen PostgreSQL habituales del proyecto. Se verificaron sus contadores contra una consulta directa de la base y se confirmó que no quedaban sesiones activas de la cuenta de integración después del logout. En Docker Desktop, `host.docker.internal:3000` alcanzó correctamente la API que escucha en `127.0.0.1:3000`.
+
+En la instancia configurada, abre [el flujo real](http://localhost:5678/workflow/supportMetricsApi) y pulsa **Execute workflow**. La credencial ya está asociada localmente al nodo Login. Para otra instalación, sigue los pasos siguientes: el repositorio no contiene esa credencial ni sus identificadores privados.
 
 ## Conectar la API real
 
@@ -47,5 +51,9 @@ Validación local: la demo se importó y ejecutó con n8n 2.46.4. Terminó con e
 La sesión se toma de `Set-Cookie`, se utiliza para leer las métricas y se revoca en el paso de logout. Si una petición falla antes de logout, el flujo se detiene y la sesión queda hasta su caducidad habitual (8 horas); no se promete limpieza ante errores. No exportes ejecuciones con cookies. La configuración evita guardar ejecuciones, pero sus salidas pueden verse durante una ejecución manual.
 
 La automatización usa un usuario de soporte porque todavía no existe una credencial de servicio con permisos de solo lectura. Los workflows permanecen inactivos y sin horario. Un siguiente paso sería añadir un horario y un destino de notificaciones elegido por el propietario.
+
+## Servicios necesarios
+
+El flujo real requiere los tres servicios encendidos: PostgreSQL, API y n8n. Los contenedores conservan sus datos en volúmenes; la API se inicia con `npm start` desde el proyecto que contiene su `.env`. Tras reiniciar el equipo, inicia esos servicios antes de ejecutar el workflow. Esta integración no configura el arranque automático de Windows ni publica la API en Internet.
 
 Referencias oficiales: [Docker](https://docs.n8n.io/hosting/installation/docker/), [importar workflows](https://docs.n8n.io/workflows/export-import/), [credenciales HTTP Custom Auth](https://docs.n8n.io/integrations/builtin/credentials/httprequest/).
